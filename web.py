@@ -20,32 +20,33 @@ PORT = 8090
 
 # single-run job state, updated by the pipeline's progress callback
 state = {"running": False, "stage": "idle", "detail": "", "video": None,
-         "cost": None, "error": None, "title": ""}
+         "cost": None, "error": None, "title": "", "caption": ""}
 lock = threading.Lock()
 
 
-def start_run(logline: str, dry_run: bool):
+def start_run(logline: str, dry_run: bool, vertical: bool):
     def cb(stage: str, detail: str):
         with lock:
             if stage == "script" and detail:
                 state["title"] = detail
             if stage == "done":
-                cost, path = detail.split("|", 1)
-                state.update(stage="done", detail="", cost=cost,
-                             video="/video?p=" + path, running=False)
+                d = json.loads(detail)
+                state.update(stage="done", detail="", cost=str(d["cost"]),
+                             caption=d.get("caption", ""),
+                             video="/video?p=" + d["video"], running=False)
             else:
                 state.update(stage=stage, detail=detail)
 
     def job():
         try:
-            pipeline.run(logline, dry_run=dry_run, cb=cb)
+            pipeline.run(logline, dry_run=dry_run, cb=cb, vertical=vertical)
         except BaseException as e:  # SystemExit included (budget cap)
             with lock:
                 state.update(error=str(e), running=False, stage="error")
 
     with lock:
         state.update(running=True, stage="script", detail="", video=None,
-                     cost=None, error=None, title="")
+                     cost=None, error=None, title="", caption="")
     threading.Thread(target=job, daemon=True).start()
 
 
@@ -96,8 +97,13 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
             margin-top: 12px; min-height: 18px; }
 
   #cinema { display: none; margin-top: 20px; }
-  #cinema video { width: 100%; border-radius: 18px; display: block;
+  #cinema video { width: 100%; max-height: 64vh; object-fit: contain; background: #000;
+                  border-radius: 18px; display: block;
                   box-shadow: 0 20px 50px rgba(0,0,0,.5); }
+  #cap { font-size: 13.5px; color: rgba(242,240,234,.6); background: rgba(255,255,255,.06);
+         border-radius: 12px; padding: 11px 13px; margin: 12px 0 2px; white-space: pre-wrap; }
+  #cap:empty { display: none; }
+  a.chip { text-decoration: none; display: inline-block; }
   #title { font-weight: 800; font-size: 18px; margin: 14px 2px 2px; }
   #meta { font-size: 13px; color: rgba(242,240,234,.45); margin: 2px; }
   .ghost { margin-top: 14px; border: 0; background: transparent; cursor: pointer;
@@ -112,6 +118,7 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
 <div class="glass">
   <textarea id="log" placeholder="One line. A whole film.&#10;“A robot janitor on a space station finds a houseplant”"></textarea>
   <div class="row">
+    <button id="vert" class="chip on">9:16</button>
     <button id="dry" class="chip">$0 test</button>
     <button id="go" class="go">Action</button>
   </div>
@@ -129,7 +136,12 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
     <video id="player" controls playsinline></video>
     <div id="title"></div>
     <div id="meta"></div>
-    <button class="ghost" onclick="location.reload()">New film</button>
+    <div id="cap"></div>
+    <div class="row">
+      <a id="dl" class="chip" download="showrunner.mp4">Download</a>
+      <button id="copycap" class="chip">Copy caption</button>
+      <button class="ghost" onclick="location.reload()" style="margin:0 0 0 auto">New film</button>
+    </div>
   </div>
   <div id="err"></div>
 </div>
@@ -139,15 +151,16 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
 <script>
 var $ = function (id) { return document.getElementById(id); };
 var ORDER = ["script", "board", "critic", "film", "cut"];
-var dry = false;
+var dry = false, vert = true;
 $("dry").onclick = function () { dry = !dry; this.classList.toggle("on", dry); };
+$("vert").onclick = function () { vert = !vert; this.classList.toggle("on", vert); };
 
 $("go").onclick = function () {
   var logline = $("log").value.trim();
   if (!logline) { $("log").focus(); return; }
   $("go").disabled = true; $("log").disabled = true;
   fetch("/run", { method: "POST", headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ logline: logline, dry_run: dry }) })
+                  body: JSON.stringify({ logline: logline, dry_run: dry, vertical: vert }) })
     .then(function () { $("steps").style.display = "flex"; poll(); });
 };
 
@@ -163,8 +176,15 @@ function poll() {
     if (s.stage === "done") {
       $("steps").style.display = "none"; $("detail").textContent = "";
       $("player").src = s.video;
+      $("dl").href = s.video;
       $("title").textContent = s.title || "";
       $("meta").textContent = (dry ? "$0 test render" : "cost $" + (+s.cost).toFixed(2));
+      $("cap").textContent = s.caption || "";
+      $("copycap").onclick = function () {
+        navigator.clipboard.writeText(s.caption || "");
+        this.textContent = "✓ Copied"; var b = this;
+        setTimeout(function () { b.textContent = "Copy caption"; }, 1500);
+      };
       $("cinema").style.display = "block";
       $("player").play().catch(function () {});
       return;
@@ -232,7 +252,7 @@ class H(BaseHTTPRequestHandler):
         logline = str(body.get("logline", "")).strip()
         if not logline:
             return self._json(400, {"error": "logline required"})
-        start_run(logline, bool(body.get("dry_run")))
+        start_run(logline, bool(body.get("dry_run")), bool(body.get("vertical")))
         self._json(200, {"ok": True})
 
 

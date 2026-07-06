@@ -23,15 +23,16 @@ def _headers():
             "X-DashScope-Async": "enable", "Content-Type": "application/json"}
 
 
-def generate_clip(shot: dict, out_path: Path, ledger: Ledger, dry_run: bool) -> Path:
+def generate_clip(shot: dict, out_path: Path, ledger: Ledger, dry_run: bool,
+                  size: str = config.VIDEO_SIZE) -> Path:
     if dry_run:
-        _placeholder_clip(shot, out_path)
+        _placeholder_clip(shot, out_path, size)
         ledger.record("video_dryrun", config.MODEL_VIDEO)
         return out_path
 
     body = {"model": config.MODEL_VIDEO,
             "input": {"prompt": shot["prompt"]},
-            "parameters": {"size": config.VIDEO_SIZE, "duration": config.CLIP_SECONDS}}
+            "parameters": {"size": size, "duration": config.CLIP_SECONDS}}
     r = httpx.post(CREATE_URL, json=body, headers=_headers(), timeout=60)
     r.raise_for_status()
     task_id = r.json()["output"]["task_id"]
@@ -58,13 +59,14 @@ def generate_clip(shot: dict, out_path: Path, ledger: Ledger, dry_run: bool) -> 
     return out_path
 
 
-def _placeholder_clip(shot: dict, out_path: Path):
+def _placeholder_clip(shot: dict, out_path: Path, size: str = config.VIDEO_SIZE):
     """ffmpeg color card with the shot id — full pipeline testable for $0."""
     label = f"shot {shot['id']}"
+    wh = size.replace("*", "x")
     subprocess.run(
         ["ffmpeg", "-y", "-loglevel", "error",
          "-f", "lavfi", "-i",
-         f"color=c=0x22333b:s=1280x720:d={config.CLIP_SECONDS}",
+         f"color=c=0x22333b:s={wh}:d={config.CLIP_SECONDS}",
          "-vf", f"drawtext=text='{label}':fontsize=64:fontcolor=white:"
                 "x=(w-text_w)/2:y=(h-text_h)/2",
          "-pix_fmt", "yuv420p", str(out_path)],

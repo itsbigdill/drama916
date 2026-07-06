@@ -22,8 +22,10 @@ console = Console()
 ProgressCB = Optional[Callable[[str, str], None]]
 
 
-def run(logline: str, dry_run: bool = False, cb: ProgressCB = None) -> Path:
+def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
+        vertical: bool = False) -> Path:
     notify = cb or (lambda stage, detail: None)
+    size = "720*1280" if vertical else config.VIDEO_SIZE
     ledger = Ledger()
     run_dir = Path(config.RUNS_DIR) / time.strftime("%m%d-%H%M%S")
     clips_dir = run_dir / "clips"
@@ -38,6 +40,15 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None) -> Path:
     save("screenplay.json", screenplay)
     console.print(f"[bold]{screenplay['title']}[/] — {len(screenplay['scenes'])} scenes")
     notify("script", screenplay.get("title", ""))
+
+    # a TikTok-ready caption, written while the board is being planned (cheap, flash)
+    from .llm import chat
+    caption = chat("caption", config.MODEL_CHEAP,
+                   "You write TikTok captions. Reply with ONLY the caption text: "
+                   "one hook line under 100 chars, then 4 relevant hashtags.",
+                   f"Short film: {screenplay.get('title')} — {screenplay.get('logline', logline)}",
+                   ledger, thinking=False).strip()
+    (run_dir / "caption.txt").write_text(caption)
 
     console.rule("2/5 Shot plan")
     notify("board", "")
@@ -64,11 +75,15 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None) -> Path:
     shot_list = shots["shots"]
     done_count = 0
 
+    if vertical:  # steer the video model toward 9:16 framing, not just a crop
+        for s in shot_list:
+            s["prompt"] = "Vertical 9:16 composition, subject centered. " + s["prompt"]
+
     def make(shot: dict) -> Path:
         nonlocal done_count
         out = clips_dir / f"shot_{shot['id']:02}.mp4"
         console.print(f"  shot {shot['id']}: {shot['prompt'][:70]}…")
-        path = generate_clip(shot, out, ledger, dry_run)
+        path = generate_clip(shot, out, ledger, dry_run, size=size)
         done_count += 1
         notify("film", f"{done_count}/{len(shot_list)}")
         return path
@@ -84,5 +99,6 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None) -> Path:
     ledger.save(str(run_dir / "run_report.json"))
     ledger.print_table()
     console.print(f"\n[bold green]Done:[/] {final}")
-    notify("done", f"{ledger.total_usd}|{final}")
+    notify("done", json.dumps({"cost": ledger.total_usd, "video": str(final),
+                               "caption": caption}))
     return final
