@@ -52,65 +52,90 @@ def start_run(logline: str, dry_run: bool, vertical: bool):
 
 PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; }
   body { margin: 0; min-height: 100vh; font: 16px/1.5 -apple-system, system-ui;
-         color: #F2F0EA; background: #0D0E12; display: flex; flex-direction: column;
-         align-items: center; padding: 48px 18px; }
+         color: #F4F0FF; background: #0A0812; display: flex; flex-direction: column;
+         align-items: center; padding: 52px 18px; }
+  /* studio spotlights: violet key, red record light, cold rim */
   body::before { content: ""; position: fixed; inset: 0; z-index: -1; background:
-    radial-gradient(55% 40% at 20% 10%, rgba(221,122,81,.14), transparent 70%),
-    radial-gradient(50% 45% at 85% 20%, rgba(122,140,220,.12), transparent 70%),
-    radial-gradient(70% 50% at 50% 105%, rgba(122,199,204,.10), transparent 70%); }
-  .wordmark { font-size: 22px; font-weight: 800; letter-spacing: -.01em; margin-bottom: 26px; }
-  .dot { color: #E8A15C; }
-  .glass { width: 100%; max-width: 560px; border-radius: 28px; padding: 22px;
-           background: linear-gradient(165deg, rgba(255,255,255,.09), rgba(255,255,255,.045));
-           border: 1px solid rgba(255,255,255,.14);
-           backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
-           box-shadow: 0 30px 70px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.12); }
-  textarea { width: 100%; border: 0; resize: none; background: rgba(255,255,255,.07);
-             border-radius: 16px; padding: 16px; font: inherit; color: inherit;
-             outline: none; min-height: 84px; }
-  textarea::placeholder { color: rgba(242,240,234,.35); }
-  .row { display: flex; gap: 10px; align-items: center; margin-top: 14px; }
-  .chip { border: 1px solid rgba(255,255,255,.18); background: transparent; cursor: pointer;
-          color: rgba(242,240,234,.55); border-radius: 999px; padding: 8px 14px;
-          font: 600 13px -apple-system, system-ui; }
-  .chip.on { background: rgba(232,161,92,.18); border-color: rgba(232,161,92,.5); color: #E8A15C; }
-  .go { flex: 1; border: 0; border-radius: 16px; padding: 15px; cursor: pointer;
-        background: #E8A15C; color: #14100B; font: 800 16px -apple-system, system-ui;
-        box-shadow: 0 10px 30px rgba(232,161,92,.35); }
-  .go:disabled { opacity: .4; box-shadow: none; }
+    radial-gradient(60% 45% at 15% 8%, rgba(124,92,255,.22), transparent 70%),
+    radial-gradient(45% 40% at 88% 12%, rgba(255,64,64,.14), transparent 70%),
+    radial-gradient(75% 55% at 50% 108%, rgba(64,160,255,.12), transparent 70%); }
+  .serif { font-family: "Instrument Serif", Georgia, serif; font-style: italic; }
+  .wordmark { font-family: "Instrument Serif", Georgia, serif; font-style: italic;
+              font-size: 52px; line-height: 1; letter-spacing: -.01em; margin-bottom: 30px;
+              text-shadow: 0 2px 0 rgba(255,255,255,.08), 0 18px 50px rgba(124,92,255,.45); }
+  .dot { color: #FF4D45; font-style: normal; }
+  .glass { width: 100%; max-width: 580px; border-radius: 34px; padding: 26px;
+           background: linear-gradient(168deg, rgba(255,255,255,.11), rgba(255,255,255,.04));
+           border: 1px solid rgba(255,255,255,.16);
+           backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px);
+           box-shadow: 0 46px 100px rgba(0,0,0,.6), 0 12px 30px rgba(124,92,255,.12),
+                       inset 0 2px 0 rgba(255,255,255,.16), inset 0 -24px 50px rgba(124,92,255,.06); }
+  textarea { width: 100%; border: 0; resize: none; background: rgba(10,8,18,.5);
+             border-radius: 20px; padding: 19px 20px; font-size: 18px; line-height: 1.5;
+             font-family: inherit; color: inherit; outline: none; min-height: 100px;
+             box-shadow: inset 0 3px 14px rgba(0,0,0,.5), inset 0 -1px 0 rgba(255,255,255,.06); }
+  textarea::placeholder { color: rgba(244,240,255,.32);
+             font-family: "Instrument Serif", Georgia, serif; font-style: italic; }
+  .row { display: flex; gap: 12px; align-items: center; margin-top: 16px; }
+  .chip { border: 1px solid rgba(255,255,255,.2); cursor: pointer;
+          background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
+          color: rgba(244,240,255,.6); border-radius: 999px; padding: 11px 18px;
+          font: 700 14px -apple-system, system-ui;
+          box-shadow: 0 6px 16px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.12); }
+  .chip.on { background: linear-gradient(180deg, rgba(124,92,255,.4), rgba(124,92,255,.2));
+             border-color: rgba(158,132,255,.7); color: #CFC2FF;
+             box-shadow: 0 6px 20px rgba(124,92,255,.35), inset 0 1px 0 rgba(255,255,255,.25); }
+  .go { flex: 1; border: 0; border-radius: 20px; padding: 17px; cursor: pointer;
+        background: linear-gradient(180deg, #FF5A4E, #D62B2B);
+        color: #FFF6F4; font-family: "Instrument Serif", Georgia, serif;
+        font-style: italic; font-size: 24px;
+        box-shadow: 0 20px 45px rgba(226,61,61,.45), 0 4px 10px rgba(0,0,0,.4),
+                    inset 0 2px 0 rgba(255,255,255,.38), inset 0 -3px 8px rgba(120,10,10,.5);
+        transition: transform .15s ease; }
+  .go:hover { transform: translateY(-2px); }
+  .go:disabled { opacity: .4; box-shadow: none; transform: none; }
 
-  #steps { display: none; justify-content: space-between; margin: 26px 6px 2px; }
-  .step { text-align: center; flex: 1; font-size: 12px; font-weight: 700;
-          color: rgba(242,240,234,.3); }
-  .step .d { width: 10px; height: 10px; border-radius: 50%; margin: 0 auto 7px;
-             background: rgba(255,255,255,.15); }
-  .step.on { color: #E8A15C; }
-  .step.on .d { background: #E8A15C; box-shadow: 0 0 14px rgba(232,161,92,.9);
+  #steps { display: none; justify-content: space-between; margin: 30px 6px 2px; }
+  .step { text-align: center; flex: 1; font-size: 12px; font-weight: 800;
+          letter-spacing: .1em; text-transform: uppercase; color: rgba(244,240,255,.28); }
+  .step .d { width: 14px; height: 14px; border-radius: 50%; margin: 0 auto 9px;
+             background: rgba(255,255,255,.14);
+             box-shadow: inset 0 2px 3px rgba(0,0,0,.4); }
+  .step.on { color: #CFC2FF; }
+  .step.on .d { background: radial-gradient(circle at 35% 30%, #E4DBFF, #7C5CFF);
+                box-shadow: 0 0 20px rgba(124,92,255,.95), inset 0 1px 1px rgba(255,255,255,.6);
                 animation: pulse 1.2s ease-in-out infinite; }
-  .step.done { color: rgba(242,240,234,.75); }
-  .step.done .d { background: rgba(242,240,234,.75); }
-  @keyframes pulse { 50% { transform: scale(1.35); } }
-  #detail { text-align: center; font-size: 13px; color: rgba(242,240,234,.45);
-            margin-top: 12px; min-height: 18px; }
+  .step.done { color: rgba(244,240,255,.72); }
+  .step.done .d { background: radial-gradient(circle at 35% 30%, #FFF, #B9AEDB);
+                  box-shadow: inset 0 1px 1px rgba(255,255,255,.7); }
+  @keyframes pulse { 50% { transform: scale(1.4); } }
+  #detail { text-align: center; font-size: 14px; color: rgba(244,240,255,.42);
+            margin-top: 14px; min-height: 20px; }
 
-  #cinema { display: none; margin-top: 20px; }
+  #cinema { display: none; margin-top: 22px; }
   #cinema video { width: 100%; max-height: 64vh; object-fit: contain; background: #000;
-                  border-radius: 18px; display: block;
-                  box-shadow: 0 20px 50px rgba(0,0,0,.5); }
-  #cap { font-size: 13.5px; color: rgba(242,240,234,.6); background: rgba(255,255,255,.06);
-         border-radius: 12px; padding: 11px 13px; margin: 12px 0 2px; white-space: pre-wrap; }
+                  border-radius: 22px; display: block;
+                  box-shadow: 0 30px 70px rgba(0,0,0,.65), 0 6px 20px rgba(124,92,255,.2),
+                              inset 0 1px 0 rgba(255,255,255,.1); }
+  #cap { font-size: 14.5px; color: rgba(244,240,255,.62); background: rgba(10,8,18,.5);
+         border-radius: 16px; padding: 13px 16px; margin: 14px 0 2px; white-space: pre-wrap;
+         box-shadow: inset 0 2px 10px rgba(0,0,0,.4); }
   #cap:empty { display: none; }
   a.chip { text-decoration: none; display: inline-block; }
-  #title { font-weight: 800; font-size: 18px; margin: 14px 2px 2px; }
-  #meta { font-size: 13px; color: rgba(242,240,234,.45); margin: 2px; }
-  .ghost { margin-top: 14px; border: 0; background: transparent; cursor: pointer;
-           color: rgba(242,240,234,.5); font: 700 14px -apple-system, system-ui; }
-  #err { display: none; margin-top: 16px; font-size: 14px; color: #E8907C; }
-  .foot { margin-top: 22px; font-size: 12px; }
-  .foot a { color: rgba(242,240,234,.35); }
+  #title { font-family: "Instrument Serif", Georgia, serif; font-style: italic;
+           font-size: 32px; margin: 16px 2px 2px;
+           text-shadow: 0 12px 34px rgba(124,92,255,.4); }
+  #meta { font-size: 13px; color: rgba(244,240,255,.42); margin: 2px; }
+  .ghost { border: 0; background: transparent; cursor: pointer;
+           color: rgba(244,240,255,.48); font: 700 14px -apple-system, system-ui; }
+  #err { display: none; margin-top: 16px; font-size: 14px; color: #FF9A8F; }
+  .foot { margin-top: 26px; font-size: 12px; }
+  .foot a { color: rgba(244,240,255,.32); }
 </style>
 <body>
 <div class="wordmark">showrunner<span class="dot">.</span></div>
