@@ -348,8 +348,22 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</titl
 
 <div class="foot"><a href="https://www.qwencloud.com">Qwen + HappyHorse on Alibaba Cloud</a> · <span id="build">BUILD_STAMP</span></div>
 
+<div id="jsErr" style="display:none;position:fixed;bottom:10px;left:10px;right:10px;z-index:99;background:#FDECEC;border:1px solid #F5B5B5;color:#B42318;border-radius:12px;padding:10px 14px;font:12px/1.4 monospace;word-break:break-all"></div>
 <script>
 var $ = function (id) { return document.getElementById(id); };
+function reportErr(text) {
+  try {
+    var b = $("jsErr"); b.style.display = "block"; b.textContent = "\u26A0 " + text;
+    fetch("/clientlog", { method: "POST", headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ err: String(text).slice(0, 500) }) }).catch(function(){});
+  } catch (e) {}
+}
+window.onerror = function (msg, src, line, col, err) {
+  reportErr(msg + " @" + line + ":" + col + (err && err.stack ? " || " + String(err.stack).split("\n").slice(0,2).join(" ") : ""));
+};
+window.addEventListener("unhandledrejection", function (e) {
+  reportErr("promise: " + ((e.reason && (e.reason.stack || e.reason.message)) || e.reason));
+});
 function startOver() {
   fetch("/reset", { method: "POST" }).finally(function () { location.reload(); });
 }
@@ -662,6 +676,11 @@ class H(BaseHTTPRequestHandler):
                 if state["stage"] == "approve":
                     state["stage"] = "film"
                     state["board"] = None
+            return self._json(200, {"ok": True})
+        if self.path == "/clientlog":
+            n = int(self.headers.get("Content-Length", 0))
+            body = json.loads(self.rfile.read(n) or b"{}")
+            print(f"[client-js-error] {body.get('err', '')}", flush=True)
             return self._json(200, {"ok": True})
         if self.path == "/reset":
             # Start over: orphan whatever is running (its approve event dies
