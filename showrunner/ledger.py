@@ -11,8 +11,8 @@ from dataclasses import asdict, dataclass, field
 from rich.console import Console
 from rich.table import Table
 
-# rough intl blended $/1M tokens; refine from console billing after day 1
-_TEXT_RATES = {"qwen3.7-max": (1.6, 6.4), "qwen3.7-plus": (0.4, 1.2), "qwen3.6-flash": (0.05, 0.4)}
+# intl $/1M tokens (in, out), July 2026 list w/ current promo for max
+_TEXT_RATES = {"qwen3.7-max": (1.25, 3.75), "qwen3.7-plus": (0.40, 1.60), "qwen3.6-flash": (0.05, 0.40)}
 
 
 @dataclass

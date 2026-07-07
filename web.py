@@ -971,6 +971,7 @@ if __name__ == "__main__":
         try:
             from showrunner.trends import fetch_trends
             fetch_trends("today")
+            fetch_trends("week")
         except Exception as e:
             print("trend warm-up failed:", e)
     threading.Thread(target=_warm, daemon=True).start()

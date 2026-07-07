@@ -16,13 +16,16 @@ MODEL_CHEAP = "qwen3.6-flash"     # smoke tests, summaries
 MODEL_VIDEO = "happyhorse-1.1-t2v"
 MODEL_VIDEO_I2V = "happyhorse-1.1-i2v"   # approved still becomes the first frame
 MODEL_IMAGE = "qwen-image-2.0-pro"
-COST_PER_STILL_USD = 0.04         # placeholder; calibrate from the console
+COST_PER_STILL_USD = 0.04         # qwen-image-2.0-pro, ще не підтверджено консоллю
+# happyhorse-1.1 intl list price per OUTPUT second (July 2026): ~0.9 RMB/s 720p,
+# ~1.2 RMB/s 1080p -> USD; promo in console may be ~40% lower
+VIDEO_RATE_PER_SEC = {"720": 0.125, "1080": 0.165}
 VIDEO_SIZE = "1280*720"
 CLIP_SECONDS = 5
 
 # Budget rails — UPDATE COST_PER_CLIP after the first real generation on July 5,
 # the console shows the actual charge per task.
-COST_PER_CLIP_USD = 1.00          # pessimistic placeholder
+COST_PER_CLIP_USD = 0.85          # 5s @ 1080p list (i2v upscales to 1080)
 MAX_BUDGET_USD = 20.00            # hard stop for a single run
 MAX_CRITIC_ROUNDS = 3
 TARGET_SHOTS = 12                 # ~60s film at 5s/clip

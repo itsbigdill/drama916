@@ -4,7 +4,10 @@ One Qwen call with live web search returns trending topics + fictionalized,
 moderation-safe loglines. Cached in memory so page loads never re-search.
 """
 
+import json
+import threading
 import time
+from pathlib import Path
 
 from . import config
 from .ledger import Ledger
@@ -12,6 +15,28 @@ from .llm import chat_json
 
 _TTL = {"today": 6 * 3600, "week": 24 * 3600}
 _cache: dict[str, tuple[float, list[dict]]] = {}
+_CACHE_FILE = Path(config.RUNS_DIR) / "trends_cache.json"
+_refreshing: set[str] = set()
+_rlock = threading.Lock()
+
+
+def _load_disk():
+    try:
+        for k, v in json.loads(_CACHE_FILE.read_text()).items():
+            _cache[k] = (v[0], v[1])
+    except (OSError, ValueError):
+        pass
+
+
+def _save_disk():
+    try:
+        _CACHE_FILE.parent.mkdir(exist_ok=True)
+        _CACHE_FILE.write_text(json.dumps(_cache))
+    except OSError:
+        pass
+
+
+_load_disk()
 
 SYSTEM = """You are a short-form video content strategist. Search the web for what is
 happening and going viral {scope}. Return SPECIFIC, DATEABLE things — named events,
@@ -38,6 +63,26 @@ def fetch_trends(period: str = "today") -> list[dict]:
     hit = _cache.get(period)
     if hit and time.time() - hit[0] < _TTL[period]:
         return hit[1]
+    if hit and hit[1]:
+        # stale-while-revalidate: віддаємо вчорашні пілюлі миттєво,
+        # свіжі тихо підвантажуються фоном
+        with _rlock:
+            if period not in _refreshing:
+                _refreshing.add(period)
+                threading.Thread(target=_refresh, args=(period,), daemon=True).start()
+        return hit[1]
+    return _fetch_now(period)
+
+
+def _refresh(period: str):
+    try:
+        _fetch_now(period)
+    finally:
+        with _rlock:
+            _refreshing.discard(period)
+
+
+def _fetch_now(period: str) -> list[dict]:
 
     scope = "TODAY" if period == "today" else "THIS WEEK"
     ledger = Ledger()
@@ -62,4 +107,5 @@ def fetch_trends(period: str = "today") -> list[dict]:
             trends.append({"topic": topic[:28], "why": why[:110], "logline": logline[:400]})
     if trends:
         _cache[period] = (time.time(), trends)
+        _save_disk()
     return trends

@@ -66,7 +66,9 @@ def generate_clip(shot: dict, out_path: Path, ledger: Ledger, dry_run: bool,
         with open(out_path, "wb") as f:
             for chunk in resp.iter_bytes():
                 f.write(chunk)
-    ledger.record("video", body["model"], clips=1, clip_cost=config.COST_PER_CLIP_USD)
+    tier = "1080" if body["model"] == config.MODEL_VIDEO_I2V else "720"
+    ledger.record("video", body["model"], clips=1,
+                  clip_cost=config.CLIP_SECONDS * config.VIDEO_RATE_PER_SEC[tier])
     return out_path
 
 
