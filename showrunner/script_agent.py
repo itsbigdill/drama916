@@ -14,6 +14,6 @@ no fast camera moves). Reply ONLY with JSON:
  "scenes": [{"id": int, "setting": str, "action": str, "subtitle": str, "mood": str}]}"""
 
 
-def write_screenplay(logline: str, ledger: Ledger) -> dict:
+def write_screenplay(logline: str, ledger: Ledger, on_delta=None) -> dict:
     return chat_json("screenplay", config.MODEL_WRITER, SYSTEM,
-                     f"Logline: {logline}", ledger)
+                     f"Logline: {logline}", ledger, on_delta=on_delta)

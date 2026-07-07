@@ -24,7 +24,10 @@ def client() -> OpenAI:
 
 
 def chat(stage: str, model: str, system: str, user: str, ledger: Ledger,
-         json_mode: bool = False, thinking: bool = True, search: bool = False) -> str:
+         json_mode: bool = False, thinking: bool = True, search: bool = False,
+         on_delta=None) -> str:
+    """on_delta(text_so_far, kind): live token stream — kind is 'thinking' or 'text'.
+    Streaming lets the UI SHOW the model working instead of a spinner."""
     kwargs = {"response_format": {"type": "json_object"}} if json_mode else {}
     extra: dict = {}
     if not thinking:
@@ -36,22 +39,45 @@ def chat(stage: str, model: str, system: str, user: str, ledger: Ledger,
         extra["search_options"] = {"forced_search": True}
     if extra:
         kwargs["extra_body"] = extra
-    resp = client().chat.completions.create(
-        model=model,
-        messages=[{"role": "system", "content": system},
-                  {"role": "user", "content": user}],
-        **kwargs,
-    )
-    usage = resp.usage
-    ledger.record(stage=stage, model=model,
-                  tokens_in=usage.prompt_tokens, tokens_out=usage.completion_tokens)
-    return resp.choices[0].message.content
+
+    messages = [{"role": "system", "content": system},
+                {"role": "user", "content": user}]
+
+    if on_delta is None:
+        resp = client().chat.completions.create(model=model, messages=messages, **kwargs)
+        usage = resp.usage
+        ledger.record(stage=stage, model=model,
+                      tokens_in=usage.prompt_tokens, tokens_out=usage.completion_tokens)
+        return resp.choices[0].message.content
+
+    stream = client().chat.completions.create(
+        model=model, messages=messages, stream=True,
+        stream_options={"include_usage": True}, **kwargs)
+    text, think = "", ""
+    usage = None
+    for chunk in stream:
+        if chunk.usage:
+            usage = chunk.usage
+        if not chunk.choices:
+            continue
+        delta = chunk.choices[0].delta
+        r = getattr(delta, "reasoning_content", None)
+        if r:
+            think += r
+            on_delta(think, "thinking")
+        if delta.content:
+            text += delta.content
+            on_delta(text, "text")
+    if usage:
+        ledger.record(stage=stage, model=model,
+                      tokens_in=usage.prompt_tokens, tokens_out=usage.completion_tokens)
+    return text
 
 
 def chat_json(stage: str, model: str, system: str, user: str, ledger: Ledger,
-              thinking: bool = True, search: bool = False) -> dict:
+              thinking: bool = True, search: bool = False, on_delta=None) -> dict:
     raw = chat(stage, model, system, user, ledger, json_mode=True, thinking=thinking,
-               search=search)
+               search=search, on_delta=on_delta)
     return json.loads(raw)
 
 

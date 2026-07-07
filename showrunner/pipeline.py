@@ -46,7 +46,9 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
         brief += f"\nGenre: {genre}."
     if cast:
         brief += f"\nCasting rule: ALL characters are {cast}; write their visual descriptors accordingly."
-    screenplay = write_screenplay(brief, ledger)
+    def script_delta(text_so_far: str, kind: str):
+        notify("script_live", json.dumps({"kind": kind, "tail": text_so_far[-700:]}))
+    screenplay = write_screenplay(brief, ledger, on_delta=script_delta)
     save("screenplay.json", screenplay)
     console.print(f"[bold]{screenplay['title']}[/] — {len(screenplay['scenes'])} scenes")
     notify("script", json.dumps({"title": screenplay.get("title", ""),
@@ -69,7 +71,12 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
 
     console.rule("3/5 Critic loop (text-only, cheap)")
     notify("critic", "")
-    shots, critique_history = refine(shots, ledger)
+    def critic_round(rnd: int, review: dict):
+        fixes = [f.get("problem", "")[:60] for f in review.get("fixes", [])[:2]]
+        notify("critic_live", json.dumps({"round": rnd, "score": review.get("score"),
+                                          "fixes": fixes,
+                                          "shots": len(review.get("revised_shots", []) or [])}))
+    shots, critique_history = refine(shots, ledger, progress=critic_round)
     save("shots_final.json", shots)
     save("critique_rounds.json", critique_history)
     n = len(shots["shots"])
@@ -104,8 +111,11 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
                                 lambda d, n: notify("stills", f"casting {d}/{n}"))
             notify("stills", f"0/{len(shot_list)}")
             board_dir = run_dir / "board"
-            paths = sketch_all(shot_list, size, board_dir, ledger,
-                               lambda d, n: notify("stills", f"{d}/{n}"),
+            def still_done(d, n, sid=None, path=""):
+                notify("stills", f"{d}/{n}")
+                if path:
+                    notify("still_live", json.dumps({"id": sid, "img": path}))
+            paths = sketch_all(shot_list, size, board_dir, ledger, still_done,
                                refs=refs or None)
             stills = {s["id"]: str(p) for s, p in zip(shot_list, paths) if p}
         notify("approve", json.dumps({
@@ -156,6 +166,8 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
             except Exception as e:
                 console.print(f"  shot {shot['id']}: review failed ({e}) — keeping the take")
                 continue
+            notify("dailies_live", json.dumps({"id": shot["id"], "ok": verdict["ok"],
+                                               "reason": verdict["reason"][:80]}))
             if verdict["ok"] or reshoots_left == 0:
                 if not verdict["ok"]:
                     console.print(f"  shot {shot['id']} flagged but reshoot budget spent")

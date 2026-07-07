@@ -133,7 +133,7 @@ def sketch_all(shots: list[dict], size: str, board_dir: Path, ledger: Ledger,
                             size, out, ledger, refs, f"shot {shot['id']:02} a3"))
         results[shot["id"]] = out if ok else None
         done += 1
-        progress(done, len(shots))
+        progress(done, len(shots), shot["id"], str(out) if ok else "")
 
     with ThreadPoolExecutor(max_workers=2) as pool:  # image QPS is tight
         list(pool.map(one, shots))

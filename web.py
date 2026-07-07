@@ -22,7 +22,8 @@ PORT = 8090
 # single-run job state, updated by the pipeline's progress callback
 state = {"running": False, "stage": "idle", "detail": "", "video": None,
          "cost": None, "error": None, "title": "", "caption": "", "log": {},
-         "board": None, "run_id": 0}
+         "board": None, "run_id": 0,
+         "live": {"script": None, "stills": [], "critic": [], "dailies": []}}
 lock = threading.Lock()
 # one approve Event PER RUN: an abandoned run keeps waiting on its own dead
 # event and can never sneak into the paid FILM stage.
@@ -41,6 +42,17 @@ def start_run(logline: str, dry_run: bool, vertical: bool,
         with lock:
             if state["run_id"] != my_run:
                 return  # a Start over happened; this run is orphaned
+            if stage.endswith("_live"):
+                obj = json.loads(detail)
+                if stage == "script_live":
+                    state["live"]["script"] = obj
+                elif stage == "still_live":
+                    state["live"]["stills"].append(obj)
+                elif stage == "critic_live":
+                    state["live"]["critic"].append(obj)
+                elif stage == "dailies_live":
+                    state["live"]["dailies"].append(obj)
+                return
             if stage == "approve":
                 state["stage"] = "approve"
                 state["board"] = json.loads(detail)
@@ -78,7 +90,8 @@ def start_run(logline: str, dry_run: bool, vertical: bool,
 
     with lock:
         state.update(running=True, stage="script", detail="", video=None,
-                     cost=None, error=None, title="", caption="", log={}, board=None)
+                     cost=None, error=None, title="", caption="", log={}, board=None,
+                     live={"script": None, "stills": [], "critic": [], "dailies": []})
     threading.Thread(target=job, daemon=True).start()
 
 
@@ -212,6 +225,22 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
               color: #6C5CE7; flex: 0 0 26px; }
   .shot .st { font-size: 14px; color: #454363; }
   .shot .sp { font-size: 12px; color: #A19FBE; display: block; margin-top: 1px; }
+  #live:empty { display: none; }
+  .lcon { background: #F4F3FA; border-radius: 12px; padding: 10px 13px; margin-top: 12px;
+          font-family: "JetBrains Mono", monospace; font-size: 11px; line-height: 1.55;
+          color: #55536E; max-height: 150px; overflow: hidden; white-space: pre-wrap;
+          word-break: break-word; display: flex; flex-direction: column-reverse; }
+  .lcon.dim { color: #A9A6C6; font-style: italic; }
+  .llab { font-family: "JetBrains Mono", monospace; font-size: 10px; font-weight: 700;
+          letter-spacing: .14em; text-transform: uppercase; color: #B4B1CF;
+          margin: 12px 0 0 3px; }
+  .lline { font-family: "JetBrains Mono", monospace; font-size: 12px; color: #55536E;
+           padding: 6px 3px; border-top: 1px solid #EDEBF7; }
+  .lline b { color: #5646D6; }
+  .lthumbs { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 10px; }
+  .lthumbs img { width: 52px; height: 74px; object-fit: cover; border-radius: 9px;
+                 box-shadow: 0 6px 14px rgba(90,70,200,.16); animation: pop .3s ease; }
+  @keyframes pop { 0% { transform: scale(.6); opacity: 0; } }
   #feed { margin-top: 6px; display: none; }
   .frow { display: flex; gap: 12px; align-items: baseline; padding: 10px 4px;
           border-top: 1px solid #EDEBF7; }
@@ -433,6 +462,29 @@ $("go").onclick = function () {
     });
 };
 
+function renderLive(s) {
+  var L = s.live || {}, el = $("live"), h = "";
+  if (s.stage === "script" && L.script && L.script.tail) {
+    h = '<div class="llab">writer \u00B7 ' + (L.script.kind === "thinking" ? "thinking" : "writing") + '</div>' +
+        '<div class="lcon' + (L.script.kind === "thinking" ? " dim" : "") + '">' +
+        L.script.tail.replace(/</g, "&lt;") + '</div>';
+  } else if ((s.stage === "critic" || s.stage === "board") && L.critic && L.critic.length) {
+    h = '<div class="llab">critic</div>' + L.critic.map(function (r) {
+      return '<div class="lline"><b>R' + r.round + " \u00B7 " + (r.score != null ? r.score + "/10" : "\u2014") + '</b>' +
+             (r.fixes && r.fixes.length ? " \u2014 " + r.fixes.join("; ").replace(/</g, "&lt;") : " \u2014 approved") + '</div>';
+    }).join("");
+  } else if (s.stage === "stills" && L.stills && L.stills.length) {
+    h = '<div class="llab">storyboard</div><div class="lthumbs">' + L.stills.map(function (st) {
+      return '<img src="/video?p=' + encodeURIComponent(st.img) + '">';
+    }).join("") + "</div>";
+  } else if (s.stage === "dailies" && L.dailies && L.dailies.length) {
+    h = '<div class="llab">dailies</div>' + L.dailies.map(function (d) {
+      return '<div class="lline">shot ' + d.id + " " + (d.ok ? "\u2713" : "\u2717 " + (d.reason || "").replace(/</g, "&lt;") + " \u2192 reshoot") + '</div>';
+    }).join("");
+  }
+  el.innerHTML = h;
+}
+
 function feedRows(s) {
   var L = s.log || {}, rows = [];
   if (L.script) rows.push(["SCRIPT", "<b>“" + (L.script.title || "") + "”</b> · " + L.script.scenes + " scenes"]);
@@ -491,6 +543,7 @@ function poll() {
         : (i === idx && !isApprove) ? " on" : "");
     });
     if (s.title) $("runTitle").textContent = "\u201C" + s.title + "\u201D";
+    renderLive(s);
     feedRows(s);
     if (isApprove) {
       $("detail").textContent = "";

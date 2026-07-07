@@ -21,7 +21,7 @@ Reply ONLY with JSON:
  "revised_shots": [...same schema as input, only if score < 8...]}"""
 
 
-def refine(shots: dict, ledger: Ledger) -> tuple[dict, list[dict]]:
+def refine(shots: dict, ledger: Ledger, progress=None) -> tuple[dict, list[dict]]:
     """Run up to MAX_CRITIC_ROUNDS; return (approved_shots, critique_history)."""
     history = []
     current = shots
@@ -29,6 +29,8 @@ def refine(shots: dict, ledger: Ledger) -> tuple[dict, list[dict]]:
         review = chat_json(f"critic_r{round_no}", config.MODEL_PLANNER, SYSTEM,
                            json.dumps(current, ensure_ascii=False), ledger, thinking=False)
         history.append(review)
+        if progress:
+            progress(round_no, review)
         if review.get("score", 0) >= 8:
             break
         if review.get("revised_shots"):
