@@ -31,7 +31,7 @@ current_approve = {"ev": threading.Event()}
 
 
 def start_run(logline: str, dry_run: bool, vertical: bool,
-              shots_target: int = 12, genre: str = "", cast: str = ""):
+              shots_target: int = 12, genre: str = "", cast: str = "", uid: str = ""):
     with lock:
         state["run_id"] += 1
         my_run = state["run_id"]
@@ -59,6 +59,10 @@ def start_run(logline: str, dry_run: bool, vertical: bool,
                 return
             if stage == "done":
                 d = json.loads(detail)
+                try:  # фільм готовий — підписуємо ран власником для My videos
+                    (Path(d["video"]).parent / "owner.txt").write_text(state.get("uid") or "")
+                except OSError:
+                    pass
                 state.update(stage="done", detail="", cost=str(d["cost"]),
                              caption=d.get("caption", ""),
                              video="/video?p=" + d["video"], running=False)
@@ -90,7 +94,7 @@ def start_run(logline: str, dry_run: bool, vertical: bool,
 
     with lock:
         state.update(running=True, stage="script", detail="", video=None,
-                     cost=None, error=None, title="", caption="", log={}, board=None,
+                     cost=None, error=None, title="", caption="", log={}, board=None, uid=uid,
                      live={"script": None, "stills": [], "critic": [], "dailies": []})
     threading.Thread(target=job, daemon=True).start()
 
@@ -112,16 +116,16 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</titl
   .wordmark { font-family: "Unbounded", system-ui; font-weight: 800; font-size: 28px;
               letter-spacing: -.02em; margin-bottom: 26px; color: #26244a; }
   .dot { color: #6C5CE7; }
-  #panes { width: 100%; max-width: 600px; display: grid; }
-  .glass { width: 100%; border-radius: 28px; padding: 26px;
+  #panes { width: 100%; max-width: 600px; display: flex; flex-direction: column; gap: 18px; }
+  .glass { width: 100%; border-radius: 28px; padding: 22px;
            background: rgba(255,255,255,.82);
            border: 1px solid #EAE8F6;
            backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
            box-shadow: 0 24px 70px rgba(90,70,200,.12), 0 3px 10px rgba(34,33,58,.05),
                        inset 0 1px 0 #FFFFFF; }
   textarea { width: 100%; border: 1px solid transparent; resize: none; background: #FDFDFF;
-             border-radius: 18px; padding: 20px 22px; font-size: 19px; line-height: 1.55;
-             font-family: inherit; color: inherit; outline: none; min-height: 116px;
+             border-radius: 16px; padding: 15px 18px; font-size: 17px; line-height: 1.5;
+             font-family: inherit; color: inherit; outline: none; min-height: 74px;
              box-shadow: inset 0 0 0 1px #F0EEF9;
              transition: border-color .2s, box-shadow .25s; }
   textarea:focus { border-color: #B9AFFF; box-shadow: 0 0 0 4px rgba(108,92,231,.12); }
@@ -129,7 +133,7 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</titl
   textarea.invalid { border-color: #E5484D; box-shadow: 0 0 0 4px rgba(229,72,77,.14);
                      animation: shake .35s ease; }
   @keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
-  .row { display: flex; gap: 10px; align-items: stretch; margin-top: 20px; }
+  .row { display: flex; gap: 10px; align-items: stretch; margin-top: 16px; }
   .trhead { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; }
   .trtabs { display: inline-flex; border: 1px solid #E7E5F3; border-radius: 10px; overflow: hidden; background: #F4F3FA; }
   .trtab { border: 0; background: transparent; cursor: pointer; padding: 5px 12px;
@@ -145,7 +149,7 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</titl
            border: 1px solid #E7E5F3; animation: skel 1.1s ease-in-out infinite; }
   @keyframes skel { 50% { opacity: .45; } }
   textarea.flash { border-color: #B9AFFF; box-shadow: 0 0 0 4px rgba(108,92,231,.18); }
-  .opts { display: flex; flex-wrap: wrap; gap: 14px 22px; margin-top: 18px; }
+  .opts { display: flex; flex-wrap: wrap; gap: 12px 18px; margin-top: 14px; }
   .opt { display: flex; flex-direction: column; gap: 6px; }
   .ol { font-family: "JetBrains Mono", monospace; font-size: 10px; font-weight: 700;
         letter-spacing: .14em; text-transform: uppercase; color: #B4B1CF; padding-left: 3px; }
@@ -158,7 +162,7 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</titl
           transition: background .18s, color .18s, transform .1s; }
   .chip:active { transform: scale(.94); }
   .chip.on { background: #ECE9FF; color: #5646D6; box-shadow: inset 0 0 0 1px #C9BFFF; }
-  .go { flex: 1; border: 0; border-radius: 16px; padding: 17px; cursor: pointer;
+  .go { flex: 1; border: 0; border-radius: 16px; padding: 14px; cursor: pointer;
         background: linear-gradient(180deg, #7A5CFF, #5B45E0);
         color: #FFFFFF; font-family: "Unbounded", system-ui; font-weight: 800;
         font-size: 15px; letter-spacing: .12em; text-transform: uppercase;
@@ -184,8 +188,9 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</titl
   #detail { text-align: center; font-family: "JetBrains Mono", monospace; font-size: 12.5px;
             color: #8B88AC; margin-top: 12px; min-height: 18px; }
 
-  #formPane, #runPane { grid-area: 1/1; transition: transform .55s cubic-bezier(.22,.8,.3,1), opacity .4s ease; }
-  #runPane { transform: translateX(112%); opacity: 0; pointer-events: none; align-self: start; }
+  #runPane { display: none; }
+  #panes.running #runPane { display: block; animation: rise .5s cubic-bezier(.22,.8,.3,1); }
+  @keyframes rise { from { transform: translateY(18px); opacity: 0; } }
   .runglass { background: rgba(252,252,255,.92);
               box-shadow: 0 24px 70px rgba(90,70,200,.16), 0 3px 10px rgba(34,33,58,.05),
                           inset 0 1px 0 #FFFFFF; }
@@ -193,8 +198,7 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</titl
              padding-bottom: 12px; border-bottom: 1px solid #EDEBF7; margin-bottom: 4px; }
   #runTitle { font-family: "Unbounded", system-ui; font-weight: 500; font-size: 15px;
               color: #26244A; }
-  #panes.running #formPane { transform: translateX(-112%); opacity: 0; pointer-events: none; }
-  #panes.running #runPane { transform: none; opacity: 1; pointer-events: auto; }
+  #panes.running #formPane { opacity: .92; }
   #beacon { width: 70px; height: 70px; margin: 14px auto 6px; position: relative; display: none; }
   #beacon .core { position: absolute; inset: 21px; border-radius: 50%;
                   background: radial-gradient(circle at 35% 30%, #A897FF, #6C5CE7);
@@ -290,6 +294,27 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</titl
   .ghost { border: 0; background: transparent; cursor: pointer; padding: 0 8px;
            color: #8B88AC; font: 700 13px -apple-system, system-ui; }
   #err { display: none; margin-top: 16px; font-size: 14px; color: #E5484D; }
+  #myvids { display: none; }
+  .vh { font-family: "Unbounded", system-ui; font-weight: 500; font-size: 15px; color: #26244A;
+        padding-bottom: 12px; border-bottom: 1px solid #EDEBF7; }
+  #vgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+           gap: 12px; margin-top: 16px; }
+  .vcell { position: relative; border-radius: 16px; overflow: hidden; cursor: pointer;
+           background: #0E0D18; box-shadow: 0 10px 26px rgba(34,33,58,.16); }
+  .vcell img, .vcell video { width: 100%; height: 190px; object-fit: cover; display: block; }
+  .vcell img { transition: transform .3s ease; }
+  .vcell:hover img { transform: scale(1.04); }
+  .vmeta { position: absolute; left: 0; right: 0; bottom: 0; padding: 22px 10px 8px;
+           background: linear-gradient(transparent, rgba(14,13,24,.88)); color: #FFF;
+           pointer-events: none; }
+  .vt { font-size: 12.5px; font-weight: 700; line-height: 1.25; }
+  .vc { font-family: "JetBrains Mono", monospace; font-size: 10px; opacity: .75; margin-top: 2px; }
+  .vplay { position: absolute; top: 50%; left: 50%; width: 40px; height: 40px; margin: -20px 0 0 -20px;
+           border-radius: 50%; background: rgba(255,255,255,.88); pointer-events: none;
+           box-shadow: 0 6px 18px rgba(0,0,0,.3); }
+  .vplay::after { content: ""; position: absolute; left: 16px; top: 12px;
+                  border-left: 12px solid #26244A; border-top: 8px solid transparent;
+                  border-bottom: 8px solid transparent; }
   .foot { margin-top: 26px; font-size: 12px; }
   .foot a { color: #A9A6C6; }
 </style>
@@ -358,6 +383,11 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</titl
   </div>
   <div id="err"></div>
   </div><!-- /runPane -->
+
+  <div id="myvids" class="glass">
+    <div class="vh">My videos</div>
+    <div id="vgrid"></div>
+  </div>
 </div><!-- /panes -->
 
 <div class="foot"><a href="https://www.qwencloud.com">Qwen + HappyHorse on Alibaba Cloud</a> · <span id="build">BUILD_STAMP</span></div>
@@ -383,6 +413,34 @@ function startOver() {
 }
 var ORDER = ["script", "board", "critic", "stills", "film", "cut"];
 var t0 = null;
+
+var uid = localStorage.getItem("sr_uid");
+if (!uid) { uid = Math.random().toString(36).slice(2) + Date.now().toString(36);
+            localStorage.setItem("sr_uid", uid); }
+function loadVids() {
+  fetch("/videos?uid=" + encodeURIComponent(uid)).then(function (r) { return r.json(); }).then(function (d) {
+    var vids = d.videos || [];
+    if (!vids.length) { $("myvids").style.display = "none"; return; }
+    $("myvids").style.display = "block";
+    $("vgrid").innerHTML = vids.map(function (v, i) {
+      return '<div class="vcell" data-i="' + i + '">' +
+             (v.poster ? '<img src="/video?p=' + encodeURIComponent(v.poster) + '" loading="lazy">'
+                       : '<img alt="">') +
+             '<span class="vplay"></span>' +
+             '<div class="vmeta"><div class="vt">' + String(v.title || "Untitled").replace(/</g, "&lt;") + '</div>' +
+             '<div class="vc">' + (v.cost != null ? "$" + (+v.cost).toFixed(2) : "") + '</div></div></div>';
+    }).join("");
+    $("vgrid").querySelectorAll(".vcell").forEach(function (c) {
+      c.onclick = function () {
+        var v = vids[+c.dataset.i];
+        c.innerHTML = '<video controls autoplay playsinline src="/video?p=' +
+                      encodeURIComponent(v.video) + '"></video>';
+        c.onclick = null;
+      };
+    });
+  }).catch(function () {});
+}
+loadVids();
 
 function enterRun() {
   document.getElementById("panes").classList.add("running");
@@ -490,7 +548,7 @@ $("go").onclick = function () {
   $("log").classList.remove("invalid");
   $("go").disabled = true; $("log").disabled = true; t0 = Date.now();
   fetch("/run", { method: "POST", headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ logline: logline, vertical: opts.fmt === "916",
+                  body: JSON.stringify({ logline: logline, vertical: opts.fmt === "916", uid: uid,
                                          shots: +opts.len, genre: opts.genre, cast: opts.cast }) })
     .then(function (r) {
       if (!r.ok) {
@@ -668,6 +726,7 @@ function poll() {
       };
       $("cinema").style.display = "block";
       $("player").play().catch(function () {});
+      loadVids();
       return;
     }
     if (s.stage === "error") {
@@ -725,6 +784,32 @@ class H(BaseHTTPRequestHandler):
         elif path == "/status":
             with lock:
                 self._json(200, dict(state))
+        elif path == "/videos":
+            uid = unquote(self.path.split("uid=", 1)[-1]) if "uid=" in self.path else ""
+            runs = Path(__file__).parent / "runs"
+            vids = []
+            for d in (sorted(runs.iterdir(), reverse=True) if runs.exists() else []):
+                f = d / "final.mp4"
+                if not f.is_file() or f.stat().st_size < 500_000:
+                    continue  # dry-run пустушки в бібліотеку не потрапляють
+                own = d / "owner.txt"
+                owner = own.read_text().strip() if own.is_file() else ""
+                if owner and owner != uid:
+                    continue  # чужий фільм — не показуємо
+                def _read(name, key=None):
+                    try:
+                        raw = (d / name).read_text()
+                        return json.loads(raw).get(key) if key else raw
+                    except (OSError, ValueError):
+                        return None
+                poster = d / "board" / "shot_01.png"
+                vids.append({"video": f"runs/{d.name}/final.mp4",
+                             "poster": f"runs/{d.name}/board/shot_01.png" if poster.is_file() else "",
+                             "title": _read("screenplay.json", "title") or "",
+                             "cost": _read("run_report.json", "total_usd"),
+                             "caption": (_read("caption.txt") or "")[:200],
+                             "ts": d.name})
+            self._json(200, {"videos": vids[:24]})
         elif path == "/video":
             # serves run artifacts (film + storyboard stills); runs/ only, no traversal
             types = {".mp4": "video/mp4", ".png": "image/png", ".jpg": "image/jpeg"}
@@ -778,7 +863,8 @@ class H(BaseHTTPRequestHandler):
         genre = str(body.get("genre", ""))[:40]
         cast = str(body.get("cast", ""))[:80]
         start_run(logline, bool(body.get("dry_run")), bool(body.get("vertical")),
-                  shots_target=shots, genre=genre, cast=cast)
+                  shots_target=shots, genre=genre, cast=cast,
+                  uid=str(body.get("uid", ""))[:64])
         self._json(200, {"ok": True})
 
 
