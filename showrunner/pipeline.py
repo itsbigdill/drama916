@@ -141,10 +141,19 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
             stills = {s["id"]: str(p) for s, p in zip(shot_list, paths) if p}
         notify("approve", json.dumps({
             "estimate": 0 if dry_run else estimate,
-            "shots": [{"id": s["id"], "subtitle": s.get("subtitle", ""),
+            "size": size,
+            "shots": [{"id": s["id"], "scene_id": s.get("scene_id"),
+                       "subtitle": s.get("subtitle", ""),
                        "prompt": s.get("prompt", ""),
                        "img": stills.get(s["id"], "")} for s in shot_list]}))
-        approval()  # blocks until the human approves the storyboard
+        # blocks until the human approves; they may drop shots at the gate
+        edits = approval() or {}
+        dropped = set(edits.get("drop") or [])
+        if dropped:
+            shot_list = [s for s in shot_list if s["id"] not in dropped]
+            stills = {k: v for k, v in stills.items() if k not in dropped}
+            estimate = len(shot_list) * config.COST_PER_CLIP_USD
+            console.print(f"human dropped shots {sorted(dropped)} -> {len(shot_list)} remain")
 
     # HappyHorse takes ~3 min per clip; sequential = ~40 min per film.
     # Generate concurrently (tasks queue server-side) — wall clock ≈ one clip.

@@ -27,7 +27,7 @@ state = {"running": False, "stage": "idle", "detail": "", "video": None,
 lock = threading.Lock()
 # one approve Event PER RUN: an abandoned run keeps waiting on its own dead
 # event and can never sneak into the paid FILM stage.
-current_approve = {"ev": threading.Event()}
+current_approve = {"ev": threading.Event(), "edits": {"drop": set()}}
 
 
 def start_run(logline: str, dry_run: bool, vertical: bool,
@@ -36,7 +36,13 @@ def start_run(logline: str, dry_run: bool, vertical: bool,
         state["run_id"] += 1
         my_run = state["run_id"]
     my_event = threading.Event()
+    my_edits = {"drop": set()}
     current_approve["ev"] = my_event
+    current_approve["edits"] = my_edits
+
+    def approval():
+        my_event.wait()
+        return {"drop": sorted(my_edits["drop"])}
 
     def cb(stage: str, detail: str):
         with lock:
@@ -85,7 +91,7 @@ def start_run(logline: str, dry_run: bool, vertical: bool,
     def job():
         try:
             pipeline.run(logline, dry_run=dry_run, cb=cb, vertical=vertical,
-                         approval=my_event.wait,
+                         approval=approval,
                          shots_target=shots_target, genre=genre, cast=cast)
         except BaseException as e:  # SystemExit included (budget cap)
             with lock:
@@ -294,6 +300,18 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</titl
   .ghost { border: 0; background: transparent; cursor: pointer; padding: 0 8px;
            color: #8B88AC; font: 700 13px -apple-system, system-ui; }
   #err { display: none; margin-top: 16px; font-size: 14px; color: #E5484D; }
+  .bx { position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; z-index: 2; }
+  .bbtn { width: 28px; height: 28px; border: 0; border-radius: 50%; cursor: pointer;
+          background: rgba(255,255,255,.92); color: #454363; font-size: 14px; line-height: 1;
+          box-shadow: 0 4px 12px rgba(34,33,58,.22); transition: transform .12s; }
+  .bbtn:hover { transform: scale(1.12); }
+  .bbtn:disabled { opacity: .35; transform: none; }
+  .bscene { font-size: 11.5px; line-height: 1.45; color: #8B88AC; margin-top: 5px; }
+  .bscene b { color: #55536E; font-weight: 600; }
+  .bcell.rf img { filter: saturate(.35) brightness(1.12) blur(2px); opacity: .68; }
+  .bcell.rf::after { content: ""; position: absolute; inset: 0; border-radius: inherit;
+    background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,.75) 50%, transparent 65%);
+    background-size: 240% 100%; animation: frost 2.4s linear infinite; }
   #myvids { display: none; }
   .vh { font-family: "Unbounded", system-ui; font-weight: 500; font-size: 15px; color: #26244A;
         padding-bottom: 12px; border-bottom: 1px solid #EDEBF7; }
@@ -642,20 +660,31 @@ function feedRows(s) {
   $("feed").innerHTML = h;
 }
 
+function sceneOf(s, sh) {
+  var scenes = (s.log && s.log.script && s.log.script.scenes) || [];
+  for (var i = 0; i < scenes.length; i++)
+    if (scenes[i].id === sh.scene_id) return scenes[i];
+  return null;
+}
 function showBoard(s) {
   var b = s.board || {};
   var withImgs = (b.shots || []).some(function (sh) { return sh.img; });
   if (withImgs) {
-    $("shotlist").innerHTML = '<div id="boardgrid" class="v' + opts.fmt + '">' + b.shots.map(function (sh) {
-      var action = (sh.prompt || "").split(". ").pop().slice(0, 70);
-      return '<div class="bcell"><span class="bn">' + String(sh.id).padStart(2, "0") + '</span>' +
+    $("shotlist").innerHTML = '<div id="boardgrid" class="v' + opts.fmt + '">' + b.shots.map(function (sh, i) {
+      var sc = sceneOf(s, sh);
+      var scene = sc ? '<b>' + esc2(sc.setting) + '.</b> ' + esc2(sc.action)
+                     : esc2((sh.prompt || "").split(". ").pop().slice(0, 90));
+      return '<div class="bcell" data-id="' + sh.id + '"><span class="bn">' + String(sh.id).padStart(2, "0") + '</span>' +
+        '<span class="bx"><button class="bbtn rd" title="redraw">\u21BB</button>' +
+        '<button class="bbtn dr" title="remove">\u2715</button></span>' +
         (sh.img
-          ? '<img src="/video?p=' + encodeURIComponent(sh.img) + '" ' +
+          ? '<img src="/video?p=' + encodeURIComponent(sh.img) + '&t=' + Date.now() + '" ' +
             'onerror="this.outerHTML=\'<div class=&quot;bfall&quot;></div>\'">'
           : '<div class="bfall"></div>') +
         '<div class="bs">' + (sh.subtitle || "") + '</div>' +
-        (action ? '<div class="bp">' + action + '</div>' : '') + '</div>';
+        '<div class="bscene">' + scene + '</div></div>';
     }).join("") + "</div>";
+    wireBoardCells(s);
   } else {
     $("shotlist").innerHTML = (b.shots || []).map(function (sh) {
       return '<div class="shot"><span class="sn">' + String(sh.id).padStart(2, "0") + '</span>' +
@@ -663,7 +692,7 @@ function showBoard(s) {
         '<span class="sp">' + (sh.prompt || "").slice(0, 90) + '…</span></span></div>';
     }).join("");
   }
-  $("film").textContent = b.estimate ? "Film it · ~$" + Math.round(b.estimate) : "Film it";
+  $("film").textContent = b.estimate ? "Film it \u00B7 ~$" + Math.round(b.estimate) : "Film it";
   $("film").onclick = function () {
     this.disabled = true;
     t0 = Date.now();
@@ -674,6 +703,38 @@ function showBoard(s) {
     });
   };
   $("board").style.display = "block";
+}
+
+function wireBoardCells(s) {
+  var cells = document.querySelectorAll ? document.querySelectorAll(".bcell") : [];
+  cells.forEach(function (cell) {
+    var id = +cell.dataset.id;
+    var rd = cell.querySelector(".rd"), dr = cell.querySelector(".dr");
+    if ((s.board.shots || []).length <= 1 && dr) dr.disabled = true;
+    if (rd) rd.onclick = function () {
+      if (cell.classList.contains("rf")) return;
+      cell.classList.add("rf"); rd.disabled = true;
+      fetch("/redraw", { method: "POST", headers: { "Content-Type": "application/json" },
+                         body: JSON.stringify({ id: id }) })
+        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+        .then(function (res) {
+          cell.classList.remove("rf"); rd.disabled = false;
+          if (res.ok) {
+            var img = cell.querySelector("img");
+            if (img) img.src = "/video?p=" + encodeURIComponent(res.d.img) + "&t=" + Date.now();
+          } else { reportErr("redraw: " + (res.d.error || "failed")); }
+        })
+        .catch(function () { cell.classList.remove("rf"); rd.disabled = false; });
+    };
+    if (dr) dr.onclick = function () {
+      fetch("/drop", { method: "POST", headers: { "Content-Type": "application/json" },
+                       body: JSON.stringify({ id: id }) })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (d.board) { s.board = d.board; showBoard(s); }
+        }).catch(function () {});
+    };
+  });
 }
 
 function poll() {
@@ -813,7 +874,7 @@ class H(BaseHTTPRequestHandler):
         elif path == "/video":
             # serves run artifacts (film + storyboard stills); runs/ only, no traversal
             types = {".mp4": "video/mp4", ".png": "image/png", ".jpg": "image/jpeg"}
-            p = Path(unquote(self.path.split("p=", 1)[-1])).resolve()
+            p = Path(unquote(self.path.split("p=", 1)[-1].split("&", 1)[0])).resolve()
             runs = (Path(__file__).parent / "runs").resolve()
             if p.suffix in types and p.is_file() and p.is_relative_to(runs):
                 data = p.read_bytes()
@@ -834,6 +895,42 @@ class H(BaseHTTPRequestHandler):
                 if state["stage"] == "approve":
                     state["stage"] = "film"
             return self._json(200, {"ok": True})
+        if self.path == "/drop":
+            n = int(self.headers.get("Content-Length", 0))
+            sid = json.loads(self.rfile.read(n) or b"{}").get("id")
+            from showrunner import config as srconfig
+            with lock:
+                b = state.get("board")
+                if state["stage"] != "approve" or not b:
+                    return self._json(409, {"error": "not at the approval gate"})
+                if len(b["shots"]) <= 1:
+                    return self._json(400, {"error": "at least one shot must remain"})
+                b["shots"] = [s for s in b["shots"] if s["id"] != sid]
+                current_approve["edits"]["drop"].add(sid)
+                if b.get("estimate"):
+                    b["estimate"] = len(b["shots"]) * srconfig.COST_PER_CLIP_USD
+                return self._json(200, {"board": b})
+        if self.path == "/redraw":
+            n = int(self.headers.get("Content-Length", 0))
+            sid = json.loads(self.rfile.read(n) or b"{}").get("id")
+            with lock:
+                b = state.get("board")
+                if state["stage"] != "approve" or not b:
+                    return self._json(409, {"error": "not at the approval gate"})
+                shot = next((s for s in b["shots"] if s["id"] == sid), None)
+                size = b.get("size") or "720*1280"
+            if not shot or not shot.get("img"):
+                return self._json(404, {"error": "shot not found"})
+            from showrunner.ledger import Ledger
+            from showrunner.storyboard import generate_still
+            out = Path(shot["img"])
+            refs = sorted(out.parent.parent.glob("cast/*.png")) or None
+            try:  # синхронно: 12-30с; фронт показує frost на комірці
+                generate_still(shot["prompt"], size, out, Ledger(), refs=refs)
+            except Exception as e:
+                detail = getattr(getattr(e, "response", None), "text", "") or str(e)
+                return self._json(502, {"error": detail[:200]})
+            return self._json(200, {"ok": True, "img": shot["img"]})
         if self.path == "/clientlog":
             n = int(self.headers.get("Content-Length", 0))
             body = json.loads(self.rfile.read(n) or b"{}")
