@@ -24,11 +24,18 @@ def client() -> OpenAI:
 
 
 def chat(stage: str, model: str, system: str, user: str, ledger: Ledger,
-         json_mode: bool = False, thinking: bool = True) -> str:
+         json_mode: bool = False, thinking: bool = True, search: bool = False) -> str:
     kwargs = {"response_format": {"type": "json_object"}} if json_mode else {}
+    extra: dict = {}
     if not thinking:
         # enable_thinking:false cuts qwen3.x latency ~5x where depth isn't needed
-        kwargs["extra_body"] = {"enable_thinking": False}
+        extra["enable_thinking"] = False
+    if search:
+        # enable_search alone is only a permission; forced_search makes the web call real
+        extra["enable_search"] = True
+        extra["search_options"] = {"forced_search": True}
+    if extra:
+        kwargs["extra_body"] = extra
     resp = client().chat.completions.create(
         model=model,
         messages=[{"role": "system", "content": system},
@@ -42,8 +49,9 @@ def chat(stage: str, model: str, system: str, user: str, ledger: Ledger,
 
 
 def chat_json(stage: str, model: str, system: str, user: str, ledger: Ledger,
-              thinking: bool = True) -> dict:
-    raw = chat(stage, model, system, user, ledger, json_mode=True, thinking=thinking)
+              thinking: bool = True, search: bool = False) -> dict:
+    raw = chat(stage, model, system, user, ledger, json_mode=True, thinking=thinking,
+               search=search)
     return json.loads(raw)
 
 

@@ -116,6 +116,23 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
                      animation: shake .35s ease; }
   @keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
   .row { display: flex; gap: 10px; align-items: stretch; margin-top: 20px; }
+  .trhead { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; }
+  .trtabs { display: inline-flex; border: 1px solid #E7E5F3; border-radius: 10px; overflow: hidden; background: #F4F3FA; }
+  .trtab { border: 0; background: transparent; cursor: pointer; padding: 5px 12px;
+           font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 700; color: #8B88AC; }
+  .trtab.on { background: #ECE9FF; color: #5646D6; }
+  .trrow { display: flex; gap: 10px; overflow-x: auto; margin-top: 8px; padding-bottom: 6px;
+           scrollbar-width: thin; }
+  .tcard { min-width: 185px; max-width: 210px; flex: 0 0 auto; background: #F9F9FD;
+           border: 1px solid #E7E5F3; border-radius: 14px; padding: 11px 13px; cursor: pointer;
+           transition: transform .12s ease, box-shadow .2s ease, border-color .2s; }
+  .tcard:hover { transform: translateY(-2px); border-color: #C9BFFF;
+                 box-shadow: 0 10px 24px rgba(108,92,231,.14); }
+  .tcard .tt { font-size: 13px; font-weight: 700; color: #33314E; }
+  .tcard .tw { font-size: 11.5px; color: #8B88AC; margin-top: 3px; line-height: 1.35; }
+  .tskel { height: 58px; animation: skel 1.1s ease-in-out infinite; }
+  @keyframes skel { 50% { opacity: .45; } }
+  textarea.flash { border-color: #B9AFFF; box-shadow: 0 0 0 4px rgba(108,92,231,.18); }
   .opts { display: flex; flex-wrap: wrap; gap: 14px 22px; margin-top: 18px; }
   .opt { display: flex; flex-direction: column; gap: 6px; }
   .ol { font-family: "JetBrains Mono", monospace; font-size: 10px; font-weight: 700;
@@ -223,6 +240,12 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
 <div id="panes">
   <div id="formPane">
   <textarea id="log" placeholder="One line. A whole film."></textarea>
+  <div class="trhead">
+    <span class="ol">Trending</span>
+    <span class="trtabs"><button class="trtab on" data-p="today">Today</button><button class="trtab" data-p="week">Week</button></span>
+  </div>
+  <div id="trends" class="trrow"></div>
+
   <div class="opts">
     <div class="opt"><span class="ol">Ratio</span><span class="seg" data-k="fmt"><button class="chip on" data-v="916">9:16</button><button class="chip" data-v="169">16:9</button></span></div>
     <div class="opt"><span class="ol">Length</span><span class="seg" data-k="len"><button class="chip" data-v="3">15s</button><button class="chip" data-v="6">30s</button><button class="chip" data-v="9">45s</button><button class="chip on" data-v="12">60s</button></span></div>
@@ -292,6 +315,40 @@ document.querySelectorAll(".seg").forEach(function (seg) {
     };
   });
 });
+
+// тренд-скаут: живі теми → тап вставляє логлайн
+var trCache = {};
+function renderTrends(list) {
+  $("trends").innerHTML = list.map(function (tr, i) {
+    return '<div class="tcard" data-i="' + i + '"><div class="tt">' + tr.topic +
+           '</div><div class="tw">' + tr.why + '</div></div>';
+  }).join("");
+  $("trends").querySelectorAll(".tcard").forEach(function (c) {
+    c.onclick = function () {
+      var tr = list[+c.dataset.i];
+      var f = $("log");
+      f.value = tr.logline;
+      f.classList.add("flash");
+      setTimeout(function () { f.classList.remove("flash"); }, 900);
+    };
+  });
+}
+function loadTrends(period) {
+  if (trCache[period]) { renderTrends(trCache[period]); return; }
+  $("trends").innerHTML = '<div class="tcard tskel"></div><div class="tcard tskel"></div><div class="tcard tskel"></div>';
+  fetch("/trends?period=" + period).then(function (r) { return r.json(); }).then(function (d) {
+    trCache[period] = d.trends || [];
+    renderTrends(trCache[period]);
+  }).catch(function () { $("trends").innerHTML = ""; });
+}
+document.querySelectorAll(".trtab").forEach(function (b) {
+  b.onclick = function () {
+    document.querySelectorAll(".trtab").forEach(function (x) { x.classList.remove("on"); });
+    b.classList.add("on");
+    loadTrends(b.dataset.p);
+  };
+});
+loadTrends("today");
 
 // студійні рядки під маяком
 var MOCKS = [
@@ -477,6 +534,13 @@ class H(BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
+        elif path == "/trends":
+            from showrunner.trends import fetch_trends
+            period = "week" if "period=week" in self.path else "today"
+            try:
+                self._json(200, {"trends": fetch_trends(period)})
+            except Exception as e:
+                self._json(500, {"error": str(e)})
         elif path == "/status":
             with lock:
                 self._json(200, dict(state))
