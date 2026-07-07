@@ -757,13 +757,16 @@ function wireBoardCells(s) {
   var cells = document.querySelectorAll ? document.querySelectorAll(".bcell") : [];
   cells.forEach(function (cell) {
     var id = +cell.dataset.id;
+    var shot = (s.board.shots || []).filter(function (x) { return x.id === id; })[0] || {};
     var rd = cell.querySelector(".rd"), dr = cell.querySelector(".dr");
     if ((s.board.shots || []).length <= 1 && dr) dr.disabled = true;
     if (rd) rd.onclick = function () {
       if (cell.classList.contains("rf")) return;
       cell.classList.add("rf"); rd.disabled = true;
+      // send the shot's own data so redraw survives a server restart
       fetch("/redraw", { method: "POST", headers: { "Content-Type": "application/json" },
-                         body: JSON.stringify({ id: id }) })
+                         body: JSON.stringify({ id: id, img: shot.img, prompt: shot.prompt,
+                                                size: s.board.size }) })
         .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
         .then(function (res) {
           cell.classList.remove("rf"); rd.disabled = false;
@@ -960,25 +963,34 @@ class H(BaseHTTPRequestHandler):
                 return self._json(200, {"board": b})
         if self.path == "/redraw":
             n = int(self.headers.get("Content-Length", 0))
-            sid = json.loads(self.rfile.read(n) or b"{}").get("id")
+            req = json.loads(self.rfile.read(n) or b"{}")
+            sid = req.get("id")
+            # Redraw only regenerates a preview PNG from a prompt — it spends no
+            # video credit and needs no live pipeline thread. Prefer server state
+            # (normal case); fall back to client-supplied shot data so a redraw
+            # still works after a server restart orphaned the run.
             with lock:
                 b = state.get("board")
-                if state["stage"] != "approve" or not b:
-                    return self._json(409, {"error": "not at the approval gate"})
-                shot = next((s for s in b["shots"] if s["id"] == sid), None)
-                size = b.get("size") or "720*1280"
-            if not shot or not shot.get("img"):
+                shot = next((s for s in (b or {}).get("shots", []) if s["id"] == sid), None) if b else None
+                size = (b or {}).get("size") if b else None
+            prompt = (shot or {}).get("prompt") or req.get("prompt")
+            img = (shot or {}).get("img") or req.get("img")
+            size = size or req.get("size") or "720*1280"
+            if not img or not prompt:
                 return self._json(404, {"error": "shot not found"})
+            runs = (Path(__file__).parent / "runs").resolve()
+            out = Path(img).resolve()
+            if out.suffix != ".png" or not out.is_relative_to(runs) or not out.parent.is_dir():
+                return self._json(400, {"error": "invalid frame path"})
             from showrunner.ledger import Ledger
             from showrunner.storyboard import generate_still
-            out = Path(shot["img"])
             refs = sorted(out.parent.parent.glob("cast/*.png")) or None
             try:  # синхронно: 12-30с; фронт показує frost на комірці
-                generate_still(shot["prompt"], size, out, Ledger(), refs=refs)
+                generate_still(prompt, size, out, Ledger(), refs=refs)
             except Exception as e:
                 detail = getattr(getattr(e, "response", None), "text", "") or str(e)
                 return self._json(502, {"error": detail[:200]})
-            return self._json(200, {"ok": True, "img": shot["img"]})
+            return self._json(200, {"ok": True, "img": img})
         if self.path == "/clientlog":
             n = int(self.headers.get("Content-Length", 0))
             body = json.loads(self.rfile.read(n) or b"{}")
