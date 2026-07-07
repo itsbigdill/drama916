@@ -20,22 +20,33 @@ PORT = 8090
 
 # single-run job state, updated by the pipeline's progress callback
 state = {"running": False, "stage": "idle", "detail": "", "video": None,
-         "cost": None, "error": None, "title": "", "caption": ""}
+         "cost": None, "error": None, "title": "", "caption": "", "log": {}}
 lock = threading.Lock()
 
 
 def start_run(logline: str, dry_run: bool, vertical: bool):
     def cb(stage: str, detail: str):
         with lock:
-            if stage == "script" and detail:
-                state["title"] = detail
             if stage == "done":
                 d = json.loads(detail)
                 state.update(stage="done", detail="", cost=str(d["cost"]),
                              caption=d.get("caption", ""),
                              video="/video?p=" + d["video"], running=False)
-            else:
-                state.update(stage=stage, detail=detail)
+                return
+            state["stage"] = stage
+            if not detail:
+                state["detail"] = ""
+                return
+            # stage-completion reports arrive as JSON; live progress as plain text
+            try:
+                obj = json.loads(detail)
+            except ValueError:
+                state["detail"] = detail
+                return
+            state["log"][stage] = obj
+            if stage == "script":
+                state["title"] = obj.get("title", "")
+            state["detail"] = ""
 
     def job():
         try:
@@ -46,116 +57,123 @@ def start_run(logline: str, dry_run: bool, vertical: bool):
 
     with lock:
         state.update(running=True, stage="script", detail="", video=None,
-                     cost=None, error=None, title="", caption="")
+                     cost=None, error=None, title="", caption="", log={})
     threading.Thread(target=job, daemon=True).start()
 
 
 PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; }
   body { margin: 0; min-height: 100vh; font: 16px/1.5 -apple-system, system-ui;
-         color: #F4F0FF; background: #0A0812; display: flex; flex-direction: column;
-         align-items: center; padding: 52px 18px; }
-  /* studio spotlights: violet key, red record light, cold rim */
+         color: #F4F0FF; background: #08070E; display: flex; flex-direction: column;
+         align-items: center; padding: 48px 18px; }
   body::before { content: ""; position: fixed; inset: 0; z-index: -1; background:
-    radial-gradient(60% 45% at 15% 8%, rgba(124,92,255,.22), transparent 70%),
-    radial-gradient(45% 40% at 88% 12%, rgba(255,64,64,.14), transparent 70%),
-    radial-gradient(75% 55% at 50% 108%, rgba(64,160,255,.12), transparent 70%); }
-  .serif { font-family: "Instrument Serif", Georgia, serif; font-style: italic; }
-  .wordmark { font-family: "Instrument Serif", Georgia, serif; font-style: italic;
-              font-size: 52px; line-height: 1; letter-spacing: -.01em; margin-bottom: 30px;
-              text-shadow: 0 2px 0 rgba(255,255,255,.08), 0 18px 50px rgba(124,92,255,.45); }
-  .dot { color: #FF4D45; font-style: normal; }
-  .glass { width: 100%; max-width: 580px; border-radius: 34px; padding: 26px;
-           background: linear-gradient(168deg, rgba(255,255,255,.11), rgba(255,255,255,.04));
-           border: 1px solid rgba(255,255,255,.16);
+    radial-gradient(60% 45% at 15% 8%, rgba(124,92,255,.2), transparent 70%),
+    radial-gradient(45% 40% at 88% 12%, rgba(255,64,64,.12), transparent 70%),
+    radial-gradient(75% 55% at 50% 108%, rgba(64,160,255,.1), transparent 70%); }
+  .mono { font-family: "JetBrains Mono", monospace; }
+  .wordmark { font-family: "Unbounded", system-ui; font-weight: 800; font-size: 30px;
+              letter-spacing: -.02em; margin-bottom: 28px;
+              background: linear-gradient(180deg, #FFFFFF 20%, #A08CFF 140%);
+              -webkit-background-clip: text; background-clip: text; color: transparent;
+              filter: drop-shadow(0 14px 34px rgba(124,92,255,.5)); }
+  .dot { color: #FF4D45; -webkit-text-fill-color: #FF4D45; }
+  .glass { width: 100%; max-width: 600px; border-radius: 30px; padding: 26px;
+           background: linear-gradient(168deg, rgba(255,255,255,.1), rgba(255,255,255,.035));
+           border: 1px solid rgba(255,255,255,.15);
            backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px);
            box-shadow: 0 46px 100px rgba(0,0,0,.6), 0 12px 30px rgba(124,92,255,.12),
-                       inset 0 2px 0 rgba(255,255,255,.16), inset 0 -24px 50px rgba(124,92,255,.06); }
-  textarea { width: 100%; border: 0; resize: none; background: rgba(10,8,18,.5);
-             border-radius: 20px; padding: 19px 20px; font-size: 18px; line-height: 1.5;
-             font-family: inherit; color: inherit; outline: none; min-height: 100px;
-             box-shadow: inset 0 3px 14px rgba(0,0,0,.5), inset 0 -1px 0 rgba(255,255,255,.06); }
-  textarea::placeholder { color: rgba(244,240,255,.32);
-             font-family: "Instrument Serif", Georgia, serif; font-style: italic; }
-  .row { display: flex; gap: 12px; align-items: center; margin-top: 16px; }
-  .chip { border: 1px solid rgba(255,255,255,.2); cursor: pointer;
-          background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
-          color: rgba(244,240,255,.6); border-radius: 999px; padding: 11px 18px;
-          font: 700 14px -apple-system, system-ui;
-          box-shadow: 0 6px 16px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.12); }
-  .chip.on { background: linear-gradient(180deg, rgba(124,92,255,.4), rgba(124,92,255,.2));
-             border-color: rgba(158,132,255,.7); color: #CFC2FF;
-             box-shadow: 0 6px 20px rgba(124,92,255,.35), inset 0 1px 0 rgba(255,255,255,.25); }
-  .go { flex: 1; border: 0; border-radius: 20px; padding: 17px; cursor: pointer;
-        background: linear-gradient(180deg, #FF5A4E, #D62B2B);
-        color: #FFF6F4; font-family: "Instrument Serif", Georgia, serif;
-        font-style: italic; font-size: 24px;
-        box-shadow: 0 20px 45px rgba(226,61,61,.45), 0 4px 10px rgba(0,0,0,.4),
-                    inset 0 2px 0 rgba(255,255,255,.38), inset 0 -3px 8px rgba(120,10,10,.5);
+                       inset 0 2px 0 rgba(255,255,255,.16), inset 0 -24px 50px rgba(124,92,255,.05); }
+  textarea { width: 100%; border: 0; resize: none; background: rgba(8,7,14,.55);
+             border-radius: 18px; padding: 18px 20px; font-size: 17px; line-height: 1.55;
+             font-family: inherit; color: inherit; outline: none; min-height: 96px;
+             box-shadow: inset 0 3px 14px rgba(0,0,0,.55), inset 0 -1px 0 rgba(255,255,255,.05); }
+  textarea::placeholder { color: rgba(244,240,255,.3); }
+  .row { display: flex; gap: 12px; align-items: stretch; margin-top: 16px; }
+  .chip { border: 1px solid rgba(255,255,255,.12); cursor: pointer; background: transparent;
+          color: rgba(244,240,255,.4); border-radius: 14px; padding: 0 16px;
+          font-family: "JetBrains Mono", monospace; font-size: 13px; font-weight: 700; }
+  .chip.on { background: linear-gradient(180deg, rgba(124,92,255,.5), rgba(124,92,255,.22));
+             border-color: rgba(170,148,255,.8); color: #E6DFFF;
+             box-shadow: 0 8px 22px rgba(124,92,255,.4), inset 0 1px 0 rgba(255,255,255,.3); }
+  .go { flex: 1; border: 0; border-radius: 16px; padding: 17px; cursor: pointer;
+        background: linear-gradient(180deg, #FF5A4E, #C92222);
+        color: #FFF6F4; font-family: "Unbounded", system-ui; font-weight: 800;
+        font-size: 15px; letter-spacing: .12em; text-transform: uppercase;
+        box-shadow: 0 20px 45px rgba(226,61,61,.4), 0 4px 10px rgba(0,0,0,.4),
+                    inset 0 2px 0 rgba(255,255,255,.35), inset 0 -4px 10px rgba(110,8,8,.55);
         transition: transform .15s ease; }
   .go:hover { transform: translateY(-2px); }
-  .go:disabled { opacity: .4; box-shadow: none; transform: none; }
+  .go:disabled { opacity: .35; box-shadow: none; transform: none; }
 
-  #steps { display: none; justify-content: space-between; margin: 30px 6px 2px; }
-  .step { text-align: center; flex: 1; font-size: 12px; font-weight: 800;
-          letter-spacing: .1em; text-transform: uppercase; color: rgba(244,240,255,.28); }
-  .step .d { width: 14px; height: 14px; border-radius: 50%; margin: 0 auto 9px;
-             background: rgba(255,255,255,.14);
-             box-shadow: inset 0 2px 3px rgba(0,0,0,.4); }
+  #steps { display: none; justify-content: space-between; margin: 28px 4px 0; }
+  .step { text-align: center; flex: 1; font-family: "JetBrains Mono", monospace;
+          font-size: 11px; font-weight: 700; letter-spacing: .14em;
+          color: rgba(244,240,255,.25); }
+  .step .d { width: 13px; height: 13px; border-radius: 50%; margin: 0 auto 8px;
+             background: rgba(255,255,255,.12); box-shadow: inset 0 2px 3px rgba(0,0,0,.45); }
   .step.on { color: #CFC2FF; }
   .step.on .d { background: radial-gradient(circle at 35% 30%, #E4DBFF, #7C5CFF);
-                box-shadow: 0 0 20px rgba(124,92,255,.95), inset 0 1px 1px rgba(255,255,255,.6);
+                box-shadow: 0 0 18px rgba(124,92,255,.95), inset 0 1px 1px rgba(255,255,255,.6);
                 animation: pulse 1.2s ease-in-out infinite; }
-  .step.done { color: rgba(244,240,255,.72); }
+  .step.done { color: rgba(244,240,255,.65); }
   .step.done .d { background: radial-gradient(circle at 35% 30%, #FFF, #B9AEDB);
                   box-shadow: inset 0 1px 1px rgba(255,255,255,.7); }
   @keyframes pulse { 50% { transform: scale(1.4); } }
-  #detail { text-align: center; font-size: 14px; color: rgba(244,240,255,.42);
-            margin-top: 14px; min-height: 20px; }
+  #detail { text-align: center; font-family: "JetBrains Mono", monospace; font-size: 12.5px;
+            color: rgba(244,240,255,.45); margin-top: 12px; min-height: 18px; }
+
+  #feed { margin-top: 6px; display: none; }
+  .frow { display: flex; gap: 12px; align-items: baseline; padding: 10px 4px;
+          border-top: 1px solid rgba(255,255,255,.07); }
+  .frow .fl { font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 700;
+              letter-spacing: .12em; color: #A08CFF; flex: 0 0 64px; }
+  .frow .fv { font-size: 14.5px; color: rgba(244,240,255,.85); }
+  .frow .fv b { font-family: "Unbounded", system-ui; font-weight: 500; font-size: 13.5px; }
 
   #cinema { display: none; margin-top: 22px; }
   #cinema video { width: 100%; max-height: 64vh; object-fit: contain; background: #000;
-                  border-radius: 22px; display: block;
+                  border-radius: 20px; display: block;
                   box-shadow: 0 30px 70px rgba(0,0,0,.65), 0 6px 20px rgba(124,92,255,.2),
                               inset 0 1px 0 rgba(255,255,255,.1); }
-  #cap { font-size: 14.5px; color: rgba(244,240,255,.62); background: rgba(10,8,18,.5);
-         border-radius: 16px; padding: 13px 16px; margin: 14px 0 2px; white-space: pre-wrap;
-         box-shadow: inset 0 2px 10px rgba(0,0,0,.4); }
+  #cap { font-size: 14px; color: rgba(244,240,255,.62); background: rgba(8,7,14,.55);
+         border-radius: 14px; padding: 13px 16px; margin: 14px 0 2px; white-space: pre-wrap;
+         box-shadow: inset 0 2px 10px rgba(0,0,0,.45); }
   #cap:empty { display: none; }
-  a.chip { text-decoration: none; display: inline-block; }
-  #title { font-family: "Instrument Serif", Georgia, serif; font-style: italic;
-           font-size: 32px; margin: 16px 2px 2px;
-           text-shadow: 0 12px 34px rgba(124,92,255,.4); }
-  #meta { font-size: 13px; color: rgba(244,240,255,.42); margin: 2px; }
-  .ghost { border: 0; background: transparent; cursor: pointer;
-           color: rgba(244,240,255,.48); font: 700 14px -apple-system, system-ui; }
+  a.chip { text-decoration: none; display: inline-flex; align-items: center; }
+  #title { font-family: "Unbounded", system-ui; font-weight: 500; font-size: 22px;
+           margin: 16px 2px 2px; filter: drop-shadow(0 10px 26px rgba(124,92,255,.4)); }
+  #meta { font-family: "JetBrains Mono", monospace; font-size: 12px;
+          color: rgba(244,240,255,.42); margin: 4px 2px; }
+  .ghost { border: 0; background: transparent; cursor: pointer; padding: 0 8px;
+           color: rgba(244,240,255,.45); font: 700 13px -apple-system, system-ui; }
   #err { display: none; margin-top: 16px; font-size: 14px; color: #FF9A8F; }
   .foot { margin-top: 26px; font-size: 12px; }
-  .foot a { color: rgba(244,240,255,.32); }
+  .foot a { color: rgba(244,240,255,.3); }
 </style>
 <body>
 <div class="wordmark">showrunner<span class="dot">.</span></div>
 
 <div class="glass">
-  <textarea id="log" placeholder="One line. A whole film.&#10;“A robot janitor on a space station finds a houseplant”"></textarea>
+  <textarea id="log" placeholder="One line. A whole film."></textarea>
   <div class="row">
     <button id="vert" class="chip on">9:16</button>
-    <button id="dry" class="chip">$0 test</button>
+    <button id="dry" class="chip">$0</button>
     <button id="go" class="go">Action</button>
   </div>
 
   <div id="steps">
-    <div class="step" data-s="script"><div class="d"></div>Script</div>
-    <div class="step" data-s="board"><div class="d"></div>Board</div>
-    <div class="step" data-s="critic"><div class="d"></div>Critic</div>
-    <div class="step" data-s="film"><div class="d"></div>Film</div>
-    <div class="step" data-s="cut"><div class="d"></div>Cut</div>
+    <div class="step" data-s="script"><div class="d"></div>SCRIPT</div>
+    <div class="step" data-s="board"><div class="d"></div>BOARD</div>
+    <div class="step" data-s="critic"><div class="d"></div>CRITIC</div>
+    <div class="step" data-s="film"><div class="d"></div>FILM</div>
+    <div class="step" data-s="cut"><div class="d"></div>CUT</div>
   </div>
   <div id="detail"></div>
+  <div id="feed"></div>
 
   <div id="cinema">
     <video id="player" controls playsinline></video>
@@ -165,7 +183,7 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
     <div class="row">
       <a id="dl" class="chip" download="showrunner.mp4">Download</a>
       <button id="copycap" class="chip">Copy caption</button>
-      <button class="ghost" onclick="location.reload()" style="margin:0 0 0 auto">New film</button>
+      <button class="ghost" onclick="location.reload()" style="margin-left:auto">New film</button>
     </div>
   </div>
   <div id="err"></div>
@@ -176,18 +194,29 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
 <script>
 var $ = function (id) { return document.getElementById(id); };
 var ORDER = ["script", "board", "critic", "film", "cut"];
-var dry = false, vert = true;
+var dry = false, vert = true, t0 = null;
 $("dry").onclick = function () { dry = !dry; this.classList.toggle("on", dry); };
 $("vert").onclick = function () { vert = !vert; this.classList.toggle("on", vert); };
 
 $("go").onclick = function () {
   var logline = $("log").value.trim();
   if (!logline) { $("log").focus(); return; }
-  $("go").disabled = true; $("log").disabled = true;
+  $("go").disabled = true; $("log").disabled = true; t0 = Date.now();
   fetch("/run", { method: "POST", headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ logline: logline, dry_run: dry, vertical: vert }) })
-    .then(function () { $("steps").style.display = "flex"; poll(); });
+    .then(function () { $("steps").style.display = "flex"; $("feed").style.display = "block"; poll(); });
 };
+
+function feedRows(s) {
+  var L = s.log || {}, rows = [];
+  if (L.script) rows.push(["SCRIPT", "<b>“" + (L.script.title || "") + "”</b> · " + L.script.scenes + " scenes"]);
+  if (L.board) rows.push(["BOARD", L.board.shots + " shots planned"]);
+  if (L.critic) rows.push(["CRITIC", (L.critic.score != null ? L.critic.score + "/10" : "approved") + " · " + L.critic.rounds + " round" + (L.critic.rounds > 1 ? "s" : "")]);
+  if (s.stage === "cut" || s.stage === "done") rows.push(["FILM", "all shots rendered"]);
+  $("feed").innerHTML = rows.map(function (r) {
+    return '<div class="frow"><span class="fl">' + r[0] + ' ✓</span><span class="fv">' + r[1] + "</span></div>";
+  }).join("");
+}
 
 function poll() {
   fetch("/status").then(function (r) { return r.json(); }).then(function (s) {
@@ -195,9 +224,11 @@ function poll() {
     document.querySelectorAll(".step").forEach(function (el, i) {
       el.className = "step" + (i < idx || s.stage === "done" ? " done" : i === idx ? " on" : "");
     });
+    feedRows(s);
+    var el = Math.round((Date.now() - t0) / 1000);
     $("detail").textContent =
-      s.stage === "film" && s.detail ? "shot " + s.detail :
-      s.stage === "critic" && s.detail ? s.detail : "";
+      s.stage === "film" && s.detail ? "shot " + s.detail + " · " + el + "s" :
+      s.stage !== "done" ? el + "s" : "";
     if (s.stage === "done") {
       $("steps").style.display = "none"; $("detail").textContent = "";
       $("player").src = s.video;

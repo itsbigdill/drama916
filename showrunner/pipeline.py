@@ -39,7 +39,8 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
     screenplay = write_screenplay(logline, ledger)
     save("screenplay.json", screenplay)
     console.print(f"[bold]{screenplay['title']}[/] — {len(screenplay['scenes'])} scenes")
-    notify("script", screenplay.get("title", ""))
+    notify("script", json.dumps({"title": screenplay.get("title", ""),
+                                 "scenes": len(screenplay.get("scenes", []))}))
 
     # a TikTok-ready caption, written while the board is being planned (cheap, flash)
     from .llm import chat
@@ -54,6 +55,7 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
     notify("board", "")
     shots = plan_shots(screenplay, ledger)
     save("shots_draft.json", shots)
+    notify("board", json.dumps({"shots": len(shots.get("shots", []))}))
 
     console.rule("3/5 Critic loop (text-only, cheap)")
     notify("critic", "")
@@ -62,7 +64,8 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
     save("critique_rounds.json", critique_history)
     n = len(shots["shots"])
     console.print(f"approved after {len(critique_history)} round(s), {n} shots")
-    notify("critic", f"{len(critique_history)} rounds")
+    last_score = critique_history[-1].get("score") if critique_history else None
+    notify("critic", json.dumps({"rounds": len(critique_history), "score": last_score}))
 
     estimate = n * config.COST_PER_CLIP_USD
     if not dry_run and estimate > config.MAX_BUDGET_USD:
