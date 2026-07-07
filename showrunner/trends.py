@@ -39,13 +39,22 @@ def _save_disk():
 _load_disk()
 
 SYSTEM = """You are a short-form video content strategist. Search the web for what is
-happening and going viral {scope}. Return SPECIFIC, DATEABLE things — named events,
-releases, matches, viral moments: e.g. "World Cup 2026", a movie that premiered this
-week, a meme born days ago, a space/weather event underway.
+happening and going viral {scope} in GLOBAL POP CULTURE. Return SPECIFIC, DATEABLE
+moments the average person worldwide would recognize: movie/show premieres, music
+drops and tours, sports finals, gaming launches, celebrity moments, internet memes
+born days ago, viral challenges, seasonal culture (Halloween, festival season), a
+space/weather event underway. e.g. "World Cup 2026", a film that premiered this week,
+a meme everyone is posting.
 
-HARD BAN on generic evergreen themes ("AI video tools", "VR travel", "urban farming",
-"mobile photography"): if the topic could have been written any month of any year, it
-does NOT qualify. Every topic must be tied to NOW.
+HARD BANS — a topic is INVALID if it is any of these:
+- niche tech / enterprise / dev news (software updates, framework releases, "SQL
+  Server", cloud products, B2B) — nobody makes a TikTok drama about a database patch;
+- region-locked bureaucracy or exams ("Gaokao", local civil-service tests, heritage
+  digitization programs) — must be globally legible, not one country's inside baseball;
+- generic evergreen themes ("AI video tools", "pet fashion", "summer stargazing",
+  "urban farming") — if it could have been written any month of any year, it fails.
+Every topic must be a thing people are ACTIVELY talking about right now AND has obvious
+story juice (drama, comedy, romance, spectacle). If unsure, prefer entertainment.
 
 For each topic write a logline: a 2-3 sentence fictional mini-drama scenario INSPIRED
 by it. Loglines must pass strict image/video moderation: NO real people's names, NO
@@ -96,15 +105,27 @@ def _fetch_now(period: str) -> list[dict]:
 
     BLOCKED = ("erotic", "nude", "sex", "nsfw", "war", "death", "shooting",
                "violence", "politic", "election", "tragedy")
+    # niche/region topics the model still slips in despite the prompt
+    NICHE = ("sql", "server update", "framework", "kubernetes", "database", "api ",
+             "gaokao", "civil service", "heritage digitali", "b2b", "enterprise",
+             "patch notes", "changelog", "devops", "compiler")
+
+    def _pill(topic: str) -> str:  # <=26 chars, never cut mid-word
+        topic = topic.strip()
+        if len(topic) <= 26:
+            return topic
+        cut = topic[:26].rsplit(" ", 1)[0]
+        return cut or topic[:26]
+
     trends = []
     for t in data.get("trends", [])[:6]:
         blob = (str(t.get("topic", "")) + " " + str(t.get("why", "")) +
                 " " + str(t.get("logline", ""))).lower()
-        if any(b in blob for b in BLOCKED):
+        if any(b in blob for b in BLOCKED) or any(b in blob for b in NICHE):
             continue
         topic, why, logline = (str(t.get(k, "")).strip() for k in ("topic", "why", "logline"))
         if topic and logline:
-            trends.append({"topic": topic[:28], "why": why[:110], "logline": logline[:400]})
+            trends.append({"topic": _pill(topic), "why": why[:110], "logline": logline[:400]})
     if trends:
         _cache[period] = (time.time(), trends)
         _save_disk()
