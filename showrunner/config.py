@@ -24,5 +24,6 @@ MAX_BUDGET_USD = 20.00            # hard stop for a single run
 MAX_CRITIC_ROUNDS = 3
 TARGET_SHOTS = 12                 # ~60s film at 5s/clip
 CONCURRENT_CLIPS = 4              # HappyHorse ~3min/clip; parallel keeps wall-clock sane
+MAX_RESHOOTS = 3                  # dailies QC may reshoot at most this many takes per film
 
 RUNS_DIR = "runs"

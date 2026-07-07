@@ -43,3 +43,23 @@ def chat_json(stage: str, model: str, system: str, user: str, ledger: Ledger,
               thinking: bool = True) -> dict:
     raw = chat(stage, model, system, user, ledger, json_mode=True, thinking=thinking)
     return json.loads(raw)
+
+
+def chat_vision_json(stage: str, model: str, system: str, text: str,
+                     images_b64: list[str], ledger: Ledger) -> dict:
+    """VL call: JPEG frames (base64) + text in, JSON out. Thinking off — verdicts
+    need speed, not depth (same finding as the verify agent: 45s → ~8s)."""
+    content = [{"type": "image_url",
+                "image_url": {"url": f"data:image/jpeg;base64,{b}"}} for b in images_b64]
+    content.append({"type": "text", "text": text})
+    resp = client().chat.completions.create(
+        model=model,
+        messages=[{"role": "system", "content": system},
+                  {"role": "user", "content": content}],
+        response_format={"type": "json_object"},
+        extra_body={"enable_thinking": False},
+    )
+    usage = resp.usage
+    ledger.record(stage=stage, model=model,
+                  tokens_in=usage.prompt_tokens, tokens_out=usage.completion_tokens)
+    return json.loads(resp.choices[0].message.content)

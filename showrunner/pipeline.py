@@ -107,6 +107,33 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
     with ThreadPoolExecutor(max_workers=config.CONCURRENT_CLIPS) as pool:
         clip_paths = list(pool.map(make, shot_list))
 
+    # Dailies: the agent screens every take and reshoots the broken ones.
+    # Skipped on dry runs (placeholder cards have nothing to review).
+    if dry_run:
+        notify("dailies", json.dumps({"approved": len(shot_list), "reshot": 0}))
+    else:
+        from .dailies import review_take
+        console.rule("Dailies review")
+        notify("dailies", "")
+        reshoots_left = config.MAX_RESHOOTS
+        reshot, reports = 0, []
+        for i, (shot, clip) in enumerate(zip(shot_list, clip_paths), 1):
+            notify("dailies", f"{i}/{len(shot_list)}")
+            verdict = review_take(clip, shot, ledger)
+            if verdict["ok"] or reshoots_left == 0:
+                if not verdict["ok"]:
+                    console.print(f"  shot {shot['id']} flagged but reshoot budget spent")
+                continue
+            console.print(f"  ✗ shot {shot['id']}: {verdict['reason']} — reshooting")
+            reports.append({"shot": shot["id"], "reason": verdict["reason"]})
+            reshoots_left -= 1
+            reshot += 1
+            generate_clip(shot, clip, ledger, dry_run, size=size)  # overwrite the take
+        save("dailies.json", reports)
+        notify("dailies", json.dumps({"approved": len(shot_list) - reshot,
+                                      "reshot": reshot,
+                                      "last_reason": reports[-1]["reason"] if reports else ""}))
+
     console.rule("5/5 Assemble")
     notify("cut", "")
     final = assemble(clip_paths, shot_list, run_dir)

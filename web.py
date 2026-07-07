@@ -194,6 +194,7 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
     <div class="step" data-s="board"><div class="d"></div>BOARD</div>
     <div class="step" data-s="critic"><div class="d"></div>CRITIC</div>
     <div class="step" data-s="film"><div class="d"></div>FILM</div>
+    <div class="step" data-s="dailies"><div class="d"></div>DAILIES</div>
     <div class="step" data-s="cut"><div class="d"></div>CUT</div>
   </div>
   <div id="detail"></div>
@@ -225,7 +226,7 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
 
 <script>
 var $ = function (id) { return document.getElementById(id); };
-var ORDER = ["script", "board", "critic", "film", "cut"];
+var ORDER = ["script", "board", "critic", "film", "dailies", "cut"];
 var t0 = null;
 var opts = { fmt: "916", len: "12", genre: "" };
 document.querySelectorAll(".seg").forEach(function (seg) {
@@ -275,7 +276,9 @@ function feedRows(s) {
   if (L.script) rows.push(["SCRIPT", "<b>“" + (L.script.title || "") + "”</b> · " + L.script.scenes + " scenes"]);
   if (L.board) rows.push(["BOARD", L.board.shots + " shots planned"]);
   if (L.critic) rows.push(["CRITIC", (L.critic.score != null ? L.critic.score + "/10" : "approved") + " · " + L.critic.rounds + " round" + (L.critic.rounds > 1 ? "s" : "")]);
-  if (s.stage === "cut" || s.stage === "done") rows.push(["FILM", "all shots rendered"]);
+  if (L.dailies) rows.push(["DAILIES", L.dailies.reshot
+        ? L.dailies.reshot + " take" + (L.dailies.reshot > 1 ? "s" : "") + " reshot — " + (L.dailies.last_reason || "")
+        : "all " + L.dailies.approved + " takes approved"]);
   $("feed").innerHTML = rows.map(function (r) {
     return '<div class="frow"><span class="fl">' + r[0] + ' ✓</span><span class="fv">' + r[1] + "</span></div>";
   }).join("");
@@ -311,6 +314,7 @@ function poll() {
     var el = Math.round((Date.now() - t0) / 1000);
     $("detail").textContent =
       s.stage === "film" && s.detail ? "shot " + s.detail + " · " + el + "s" :
+      s.stage === "dailies" && s.detail ? "reviewing " + s.detail + " · " + el + "s" :
       s.stage !== "done" ? el + "s" : "";
     if (s.stage === "done") {
       $("steps").style.display = "none"; $("detail").textContent = "";
