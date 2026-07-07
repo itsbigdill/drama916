@@ -208,13 +208,11 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
 <div id="panes">
   <div id="formPane">
   <textarea id="log" placeholder="One line. A whole film."></textarea>
-  <div class="row" style="flex-wrap:wrap">
-    <span class="seg" data-k="fmt"><button class="chip on" data-v="916">9:16</button><button class="chip" data-v="169">16:9</button></span>
-    <span class="seg" data-k="len"><button class="chip" data-v="3">15s</button><button class="chip" data-v="6">30s</button><button class="chip" data-v="9">45s</button><button class="chip on" data-v="12">60s</button></span>
-  </div>
-  <div class="row" style="flex-wrap:wrap">
-    <span class="seg" data-k="genre"><button class="chip on" data-v="drama">Drama</button><button class="chip" data-v="comedy">Comedy</button><button class="chip" data-v="noir">Noir</button><button class="chip" data-v="comic book style">Comic</button><button class="chip" data-v="ad">Ad</button></span>
-    <span class="seg" data-k="cast"><button class="chip on" data-v="realistic human characters">Real</button><button class="chip" data-v="anthropomorphic fruit and vegetable characters">Fruits</button><button class="chip" data-v="animal characters">Animals</button><button class="chip" data-v="everyday objects brought to life as characters">Objects</button></span>
+  <div class="opts">
+    <div class="opt"><span class="ol">Ratio</span><span class="seg" data-k="fmt"><button class="chip on" data-v="916">9:16</button><button class="chip" data-v="169">16:9</button></span></div>
+    <div class="opt"><span class="ol">Length</span><span class="seg" data-k="len"><button class="chip" data-v="3">15s</button><button class="chip" data-v="6">30s</button><button class="chip" data-v="9">45s</button><button class="chip on" data-v="12">60s</button></span></div>
+    <div class="opt"><span class="ol">Genre</span><span class="seg" data-k="genre"><button class="chip on" data-v="drama">Drama</button><button class="chip" data-v="comedy">Comedy</button><button class="chip" data-v="noir">Noir</button><button class="chip" data-v="comic book style">Comic</button><button class="chip" data-v="ad">Ad</button></span></div>
+    <div class="opt"><span class="ol">Cast</span><span class="seg" data-k="cast"><button class="chip on" data-v="realistic human characters">Real</button><button class="chip" data-v="anthropomorphic fruit and vegetable characters">Fruits</button><button class="chip" data-v="animal characters">Animals</button><button class="chip" data-v="everyday objects brought to life as characters">Objects</button></span></div>
   </div>
   <div class="row">
     <button id="go" class="go">Action</button>
