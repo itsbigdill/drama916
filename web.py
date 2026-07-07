@@ -27,7 +27,7 @@ approve_event = threading.Event()
 
 
 def start_run(logline: str, dry_run: bool, vertical: bool,
-              shots_target: int = 12, genre: str = ""):
+              shots_target: int = 12, genre: str = "", cast: str = ""):
     def cb(stage: str, detail: str):
         with lock:
             if stage == "approve":
@@ -59,7 +59,7 @@ def start_run(logline: str, dry_run: bool, vertical: bool,
         try:
             pipeline.run(logline, dry_run=dry_run, cb=cb, vertical=vertical,
                          approval=approve_event.wait,
-                         shots_target=shots_target, genre=genre)
+                         shots_target=shots_target, genre=genre, cast=cast)
         except BaseException as e:  # SystemExit included (budget cap)
             with lock:
                 state.update(error=str(e), running=False, stage="error")
@@ -182,8 +182,11 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
   <textarea id="log" placeholder="One line. A whole film."></textarea>
   <div class="row" style="flex-wrap:wrap">
     <span class="seg" data-k="fmt"><button class="chip on" data-v="916">9:16</button><button class="chip" data-v="169">16:9</button></span>
-    <span class="seg" data-k="len"><button class="chip" data-v="6">30s</button><button class="chip on" data-v="12">60s</button></span>
-    <span class="seg" data-k="genre"><button class="chip" data-v="drama">Drama</button><button class="chip" data-v="comedy">Comedy</button><button class="chip" data-v="noir">Noir</button><button class="chip" data-v="ad">Ad</button></span>
+    <span class="seg" data-k="len"><button class="chip" data-v="3">15s</button><button class="chip" data-v="6">30s</button><button class="chip" data-v="9">45s</button><button class="chip on" data-v="12">60s</button></span>
+  </div>
+  <div class="row" style="flex-wrap:wrap">
+    <span class="seg" data-k="genre"><button class="chip" data-v="drama">Drama</button><button class="chip" data-v="comedy">Comedy</button><button class="chip" data-v="noir">Noir</button><button class="chip" data-v="comic book style">Comic</button><button class="chip" data-v="ad">Ad</button></span>
+    <span class="seg" data-k="cast"><button class="chip" data-v="realistic human characters">Real</button><button class="chip" data-v="anthropomorphic fruit and vegetable characters">Fruits</button><button class="chip" data-v="animal characters">Animals</button><button class="chip" data-v="everyday objects brought to life as characters">Objects</button></span>
   </div>
   <div class="row">
     <button id="go" class="go">Action</button>
@@ -228,14 +231,15 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
 var $ = function (id) { return document.getElementById(id); };
 var ORDER = ["script", "board", "critic", "film", "dailies", "cut"];
 var t0 = null;
-var opts = { fmt: "916", len: "12", genre: "" };
+var opts = { fmt: "916", len: "12", genre: "", cast: "" };
 document.querySelectorAll(".seg").forEach(function (seg) {
   var k = seg.dataset.k;
+  var optional = (k === "genre" || k === "cast");   // ці групи можна зняти
   seg.querySelectorAll(".chip").forEach(function (ch) {
     ch.onclick = function () {
       var was = ch.classList.contains("on");
       seg.querySelectorAll(".chip").forEach(function (x) { x.classList.remove("on"); });
-      if (k === "genre" && was) { opts.genre = ""; return; }  // genre is deselectable
+      if (optional && was) { opts[k] = ""; return; }
       ch.classList.add("on");
       opts[k] = ch.dataset.v;
     };
@@ -258,8 +262,6 @@ setInterval(function () {
   ideaIx = (ideaIx + 1) % IDEAS.length;
   $("log").placeholder = "One line. A whole film.\n“" + IDEAS[ideaIx] + "”";
 }, 3200);
-$("dry").onclick = function () { dry = !dry; this.classList.toggle("on", dry); };
-$("vert").onclick = function () { vert = !vert; this.classList.toggle("on", vert); };
 
 $("go").onclick = function () {
   var logline = $("log").value.trim();
@@ -267,7 +269,7 @@ $("go").onclick = function () {
   $("go").disabled = true; $("log").disabled = true; t0 = Date.now();
   fetch("/run", { method: "POST", headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ logline: logline, vertical: opts.fmt === "916",
-                                         shots: +opts.len, genre: opts.genre }) })
+                                         shots: +opts.len, genre: opts.genre, cast: opts.cast }) })
     .then(function () { $("steps").style.display = "flex"; $("feed").style.display = "block"; poll(); });
 };
 
@@ -402,10 +404,11 @@ class H(BaseHTTPRequestHandler):
         logline = str(body.get("logline", "")).strip()
         if not logline:
             return self._json(400, {"error": "logline required"})
-        shots = 6 if int(body.get("shots", 12)) <= 6 else 12
-        genre = str(body.get("genre", ""))[:24]
+        shots = max(3, min(15, int(body.get("shots", 12))))
+        genre = str(body.get("genre", ""))[:40]
+        cast = str(body.get("cast", ""))[:80]
         start_run(logline, bool(body.get("dry_run")), bool(body.get("vertical")),
-                  shots_target=shots, genre=genre)
+                  shots_target=shots, genre=genre, cast=cast)
         self._json(200, {"ok": True})
 
 

@@ -24,7 +24,8 @@ ProgressCB = Optional[Callable[[str, str], None]]
 
 def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
         vertical: bool = False, approval: Optional[Callable[[], None]] = None,
-        shots_target: int = config.TARGET_SHOTS, genre: str = "") -> Path:
+        shots_target: int = config.TARGET_SHOTS, genre: str = "",
+        cast: str = "") -> Path:
     """approval: optional blocking human checkpoint called AFTER the critic and
     BEFORE any video credit is spent. The web UI shows the storyboard and blocks
     here until the human hits Film it. CLI passes None (no pause)."""
@@ -40,7 +41,11 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
 
     console.rule("1/5 Screenplay")
     notify("script", "")
-    brief = f"{logline}\nGenre: {genre}." if genre else logline
+    brief = logline
+    if genre:
+        brief += f"\nGenre: {genre}."
+    if cast:
+        brief += f"\nCasting rule: ALL characters are {cast}; write their visual descriptors accordingly."
     screenplay = write_screenplay(brief, ledger)
     save("screenplay.json", screenplay)
     console.print(f"[bold]{screenplay['title']}[/] — {len(screenplay['scenes'])} scenes")
