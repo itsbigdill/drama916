@@ -99,7 +99,8 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
   .wordmark { font-family: "Unbounded", system-ui; font-weight: 800; font-size: 28px;
               letter-spacing: -.02em; margin-bottom: 26px; color: #26244a; }
   .dot { color: #6C5CE7; }
-  .glass { width: 100%; max-width: 600px; border-radius: 28px; padding: 26px;
+  #panes { width: 100%; max-width: 600px; display: grid; }
+  .glass { width: 100%; border-radius: 28px; padding: 26px;
            background: rgba(255,255,255,.82);
            border: 1px solid #EAE8F6;
            backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
@@ -170,9 +171,15 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
   #detail { text-align: center; font-family: "JetBrains Mono", monospace; font-size: 12.5px;
             color: #8B88AC; margin-top: 12px; min-height: 18px; }
 
-  #panes { display: grid; }
   #formPane, #runPane { grid-area: 1/1; transition: transform .55s cubic-bezier(.22,.8,.3,1), opacity .4s ease; }
-  #runPane { transform: translateX(112%); opacity: 0; pointer-events: none; }
+  #runPane { transform: translateX(112%); opacity: 0; pointer-events: none; align-self: start; }
+  .runglass { background: rgba(252,252,255,.92);
+              box-shadow: 0 24px 70px rgba(90,70,200,.16), 0 3px 10px rgba(34,33,58,.05),
+                          inset 0 1px 0 #FFFFFF; }
+  .runhead { display: flex; justify-content: space-between; align-items: center;
+             padding-bottom: 12px; border-bottom: 1px solid #EDEBF7; margin-bottom: 4px; }
+  #runTitle { font-family: "Unbounded", system-ui; font-weight: 500; font-size: 15px;
+              color: #26244A; }
   #panes.running #formPane { transform: translateX(-112%); opacity: 0; pointer-events: none; }
   #panes.running #runPane { transform: none; opacity: 1; pointer-events: auto; }
   #beacon { width: 70px; height: 70px; margin: 14px auto 6px; position: relative; display: none; }
@@ -234,9 +241,8 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
 <body>
 <div class="wordmark">showrunner<span class="dot">.</span></div>
 
-<div class="glass">
 <div id="panes">
-  <div id="formPane">
+  <div id="formPane" class="glass">
   <textarea id="log" placeholder="One line. A whole film."></textarea>
   <div class="trhead">
     <span class="ol">Trending</span>
@@ -256,7 +262,11 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
   <div id="formErr" style="display:none;margin-top:12px;font-size:14px;color:#E5484D"></div>
   </div><!-- /formPane -->
 
-  <div id="runPane">
+  <div id="runPane" class="glass runglass">
+  <div class="runhead">
+    <span id="runTitle">Production</span>
+    <button class="ghost" onclick="startOver()" title="close">✕</button>
+  </div>
   <div id="beacon"><span class="core"></span></div>
   <div id="mock"></div>
   <div id="detail"></div>
@@ -292,7 +302,6 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
   <div id="err"></div>
   </div><!-- /runPane -->
 </div><!-- /panes -->
-</div>
 
 <div class="foot"><a href="https://www.qwencloud.com">Qwen + HappyHorse on Alibaba Cloud</a></div>
 
@@ -481,6 +490,7 @@ function poll() {
       el.className = "step" + (i < idx || s.stage === "done" ? " done"
         : (i === idx && !isApprove) ? " on" : "");
     });
+    if (s.title) $("runTitle").textContent = "\u201C" + s.title + "\u201D";
     feedRows(s);
     if (isApprove) {
       $("detail").textContent = "";
