@@ -11,9 +11,7 @@ storytelling (a video model will render it — no complex physics, no text in fr
 no fast camera moves). Reply ONLY with JSON:
 {"title": str, "logline": str, "style": str,  # one reusable visual style sentence
  "caption": str,  # TikTok caption: one hook line under 100 chars, then 4 hashtags
- "characters": [{"name": str, "visual": str}],  # stable visual descriptor, reused verbatim in every shot;
- # characters are ORIGINAL and fictional — visual must NOT resemble any real
- # celebrity, athlete or public figure (give them distinctive non-famous features)
+ "characters": [{"name": str, "visual": str}],  # stable visual descriptor, reused verbatim in every shot
  "scenes": [{"id": int, "setting": str, "action": str, "subtitle": str, "mood": str}]}"""
 
 
