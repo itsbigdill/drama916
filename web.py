@@ -193,6 +193,7 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</titl
   @keyframes pulse { 50% { transform: scale(1.4); } }
   #detail { text-align: center; font-family: "JetBrains Mono", monospace; font-size: 12.5px;
             color: #8B88AC; margin-top: 12px; min-height: 18px; }
+  #live:not(:empty) { margin-top: 20px; }
 
   #runPane { display: none; }
   #panes.running #runPane { display: block; animation: rise .5s cubic-bezier(.22,.8,.3,1); }
@@ -380,7 +381,6 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</titl
   <div id="beacon"><span class="core"></span></div>
   <div id="mock"></div>
   <div id="detail"></div>
-  <div id="live"></div>
   <div id="steps">
     <div class="step" data-s="script"><div class="d"></div>SCRIPT</div>
     <div class="step" data-s="board"><div class="d"></div>BOARD</div>
@@ -389,6 +389,7 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</titl
     <div class="step" data-s="film"><div class="d"></div>FILM</div>
     <div class="step" data-s="cut"><div class="d"></div>CUT</div>
   </div>
+  <div id="live"></div>
   <div id="feed"></div>
   <div id="dbg" style="display:none;margin-top:10px;font:10px/1.4 monospace;color:#C6C3DE"></div>
 
