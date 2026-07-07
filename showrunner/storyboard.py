@@ -148,12 +148,14 @@ def sketch_all(shots: list[dict], size: str, board_dir: Path, ledger: Ledger,
         clean = _sanitized(shot["prompt"], ledger)
         if _try_still(clean, size, out, ledger, refs, f"shot {shot['id']:02} rescue"):
             results[shot["id"]] = out
+            progress(done, len(shots), shot["id"], str(out))
         elif refs:
             # last real-image resort: the hero's portrait IS a real frame of the
             # right character — infinitely better than a dashed placeholder
             import shutil
             shutil.copy(refs[0], out)
             results[shot["id"]] = out
+            progress(done, len(shots), shot["id"], str(out))
             print(f"[storyboard] shot {shot['id']:02}: portrait stands in as the frame")
 
     return [results[s["id"]] for s in shots]

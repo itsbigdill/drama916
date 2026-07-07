@@ -88,12 +88,20 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
     n = len(shots["shots"])
     console.print(f"approved after {len(critique_history)} round(s), {n} shots")
     last_score = critique_history[-1].get("score") if critique_history else None
+
+    def _clip(s, limit):  # word-boundary cut, no mid-word amputations in the UI
+        s = str(s).strip()
+        return s if len(s) <= limit else s[:limit].rsplit(" ", 1)[0] + "\u2026"
+
     notes = []
     for rev in critique_history:
-        notes += [str(f.get("problem", ""))[:80] for f in rev.get("fixes", [])]
+        notes += [{"problem": _clip(f.get("problem", ""), 160),
+                   "fix": _clip(f.get("fix", ""), 160)}
+                  for f in rev.get("fixes", [])]
+    rewrote = any(rev.get("revised_shots") for rev in critique_history)
     notify("critic", json.dumps({"rounds": len(critique_history), "score": last_score,
-                                 "shots": n, "notes": notes[:5],
-                                 "verdict": str(critique_history[-1].get("verdict", ""))[:140] if critique_history else ""}))
+                                 "shots": n, "notes": notes[:6], "rewrote": rewrote,
+                                 "verdict": _clip(critique_history[-1].get("verdict", ""), 220) if critique_history else ""}))
 
     estimate = n * config.COST_PER_CLIP_USD
     if not dry_run and estimate > config.MAX_BUDGET_USD:

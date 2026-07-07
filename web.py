@@ -257,6 +257,18 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</titl
                color: #A08CFF; margin-right: 7px; }
   .scene .sset { font-weight: 600; color: #454363; }
   .scene .ssub { color: #8B88AC; font-style: italic; }
+  .ffix { color: #6C5CE7; }
+  .gwrap { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+           gap: 10px; margin-top: 14px; }
+  .gcell { position: relative; border-radius: 14px; overflow: hidden; }
+  .gcell img { width: 100%; height: 150px; object-fit: cover; display: block;
+               filter: saturate(.35) brightness(1.12) blur(2px); opacity: .68; }
+  .gcell::after { content: ""; position: absolute; inset: 0;
+    background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,.75) 50%, transparent 65%);
+    background-size: 240% 100%; animation: frost 2.4s linear infinite; }
+  .gcell:nth-child(3n+2)::after { animation-delay: .5s; }
+  .gcell:nth-child(3n)::after { animation-delay: 1s; }
+  @keyframes frost { from { background-position: 130% 0; } to { background-position: -130% 0; } }
   .fnote { font-family: "JetBrains Mono", monospace; font-size: 11.5px; color: #8B88AC;
            padding: 3px 0; }
   .fthumbs { display: flex; gap: 7px; flex-wrap: wrap; padding-top: 4px; }
@@ -506,6 +518,12 @@ function renderLive(s) {
       return '<div class="lline"><b>R' + r.round + " \u00B7 " + (r.score != null ? r.score + "/10" : "\u2014") + '</b>' +
              (r.fixes && r.fixes.length ? " \u2014 " + r.fixes.join("; ").replace(/</g, "&lt;") : " \u2014 approved") + '</div>';
     }).join("");
+  } else if ((s.stage === "film" || s.stage === "cut") && s.board &&
+             (s.board.shots || []).some(function (sh) { return sh.img; })) {
+    h = '<div class="llab">' + (s.stage === "cut" ? "assembling" : "filming") + '</div>' +
+        '<div class="gwrap">' + s.board.shots.map(function (sh) {
+          return sh.img ? '<div class="gcell"><img src="/video?p=' + encodeURIComponent(sh.img) + '"></div>' : "";
+        }).join("") + "</div>";
   } else if (s.stage === "stills" && L.stills && L.stills.length) {
     h = '<div class="llab">storyboard</div><div class="lthumbs">' + L.stills.map(function (st) {
       return '<img src="/video?p=' + encodeURIComponent(st.img) + '">';
@@ -543,11 +561,18 @@ function feedRows(s) {
   }
   if (L.critic) {
     var cbody = (L.critic.verdict ? '<div class="fnote">' + esc2(L.critic.verdict) + '</div>' : "") +
-                (L.critic.notes || []).map(function (n) { return '<div class="fnote">\u2717 ' + esc2(n) + '</div>'; }).join("");
-    h += blk("CRITIC", (L.critic.score != null ? "score " + L.critic.score + "/10" : "approved") +
-             " \u00B7 " + L.critic.rounds + " round" + (L.critic.rounds > 1 ? "s" : "") +
-             (L.critic.shots ? " \u00B7 " + L.critic.shots + " shots final" : ""), cbody,
-             s.stage === "stills" || s.stage === "approve");
+                (L.critic.notes || []).map(function (n) {
+                  if (typeof n === "string") return '<div class="fnote">\u2717 ' + esc2(n) + '</div>';
+                  return '<div class="fnote">\u2717 ' + esc2(n.problem) +
+                         (n.fix ? ' <span class="ffix">\u2192 ' + esc2(n.fix) + '</span>' : "") + '</div>';
+                }).join("");
+    var chead = L.critic.rewrote
+        ? "draft " + (L.critic.score != null ? L.critic.score + "/10" : "rejected") +
+          " \u2192 <b>rewrote the board</b>" + (L.critic.shots ? " \u00B7 " + L.critic.shots + " shots" : "")
+        : (L.critic.score != null ? "score " + L.critic.score + "/10" : "approved") +
+          " \u00B7 " + L.critic.rounds + " round" + (L.critic.rounds > 1 ? "s" : "") +
+          (L.critic.shots ? " \u00B7 " + L.critic.shots + " shots final" : "");
+    h += blk("CRITIC", chead, cbody, s.stage === "stills" || s.stage === "approve");
   }
   if (live.stills && live.stills.length && s.stage !== "stills") {
     h += blk("STILLS", live.stills.length + " frames painted",
@@ -583,6 +608,7 @@ function showBoard(s) {
   $("film").textContent = b.estimate ? "Film it · ~$" + Math.round(b.estimate) : "Film it";
   $("film").onclick = function () {
     this.disabled = true;
+    t0 = Date.now();
     fetch("/approve", { method: "POST" }).then(function () {
       $("board").style.display = "none";
       $("beacon").style.display = "block"; $("mock").style.display = "block";
@@ -722,7 +748,6 @@ class H(BaseHTTPRequestHandler):
             with lock:
                 if state["stage"] == "approve":
                     state["stage"] = "film"
-                    state["board"] = None
             return self._json(200, {"ok": True})
         if self.path == "/clientlog":
             n = int(self.headers.get("Content-Length", 0))
