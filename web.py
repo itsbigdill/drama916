@@ -566,9 +566,8 @@ function poll() {
     var el = secs < 100 ? secs + "s"
            : Math.floor(secs / 60) + "m " + String(secs % 60).padStart(2, "0") + "s";
     $("detail").textContent =
-      isStills && s.detail ? "sketching " + s.detail + " · " + el :
+      s.stage === "stills" && s.detail ? "sketching " + s.detail + " · " + el :
       s.stage === "film" && s.detail ? "rendering shot " + s.detail + " · " + el :
-      s.stage === "dailies" && s.detail ? "reviewing " + s.detail + " · " + el :
       s.stage === "critic" && s.detail ? s.detail + " · " + el :
       s.stage !== "done" ? el : "";
     if (s.stage === "done") {
