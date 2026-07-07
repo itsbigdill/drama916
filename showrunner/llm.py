@@ -17,7 +17,9 @@ def client() -> OpenAI:
         key = os.environ.get("DASHSCOPE_API_KEY")
         if not key:
             raise SystemExit("DASHSCOPE_API_KEY missing — copy .env.example to .env")
-        _client = OpenAI(api_key=key, base_url=config.BASE_URL)
+        # hard timeouts + retries: one hung TLS handshake must not kill a film
+        _client = OpenAI(api_key=key, base_url=config.BASE_URL,
+                         timeout=90.0, max_retries=2)
     return _client
 
 

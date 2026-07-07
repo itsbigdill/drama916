@@ -83,21 +83,31 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
                          f"${config.MAX_BUDGET_USD} — trim shots or raise the cap.")
 
     shot_list = shots["shots"]
+    if vertical:  # framing hint must be in place BEFORE stills, so board == film
+        for s in shot_list:
+            s["prompt"] = "Vertical 9:16 composition, subject centered. " + s["prompt"]
+
     if approval is not None:
+        # draw the storyboard as pictures — the human approves frames, not prompts
+        stills: dict[int, str] = {}
+        if not dry_run:
+            from .storyboard import sketch_all
+            notify("stills", f"0/{len(shot_list)}")
+            board_dir = run_dir / "board"
+            paths = sketch_all(shot_list, size, board_dir, ledger,
+                               lambda d, n: notify("stills", f"{d}/{n}"))
+            stills = {s["id"]: str(p) for s, p in zip(shot_list, paths) if p}
         notify("approve", json.dumps({
             "estimate": 0 if dry_run else estimate,
             "shots": [{"id": s["id"], "subtitle": s.get("subtitle", ""),
-                       "prompt": s.get("prompt", "")} for s in shot_list]}))
+                       "prompt": s.get("prompt", ""),
+                       "img": stills.get(s["id"], "")} for s in shot_list]}))
         approval()  # blocks until the human approves the storyboard
 
     # HappyHorse takes ~3 min per clip; sequential = ~40 min per film.
     # Generate concurrently (tasks queue server-side) — wall clock ≈ one clip.
     console.rule(f"4/5 Video generation ({'DRY RUN' if dry_run else f'~${estimate:.0f}'})")
     done_count = 0
-
-    if vertical:  # steer the video model toward 9:16 framing, not just a crop
-        for s in shot_list:
-            s["prompt"] = "Vertical 9:16 composition, subject centered. " + s["prompt"]
 
     def make(shot: dict) -> Path:
         nonlocal done_count
@@ -124,7 +134,12 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
         reshot, reports = 0, []
         for i, (shot, clip) in enumerate(zip(shot_list, clip_paths), 1):
             notify("dailies", f"{i}/{len(shot_list)}")
-            verdict = review_take(clip, shot, ledger)
+            # QC is advisory: any failure here must never sink an already-shot film
+            try:
+                verdict = review_take(clip, shot, ledger)
+            except Exception as e:
+                console.print(f"  shot {shot['id']}: review failed ({e}) — keeping the take")
+                continue
             if verdict["ok"] or reshoots_left == 0:
                 if not verdict["ok"]:
                     console.print(f"  shot {shot['id']} flagged but reshoot budget spent")
@@ -133,7 +148,10 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
             reports.append({"shot": shot["id"], "reason": verdict["reason"]})
             reshoots_left -= 1
             reshot += 1
-            generate_clip(shot, clip, ledger, dry_run, size=size)  # overwrite the take
+            try:
+                generate_clip(shot, clip, ledger, dry_run, size=size)  # overwrite the take
+            except Exception as e:
+                console.print(f"  reshoot of shot {shot['id']} failed ({e}) — keeping original")
         save("dailies.json", reports)
         notify("dailies", json.dumps({"approved": len(shot_list) - reshot,
                                       "reshot": reshot,

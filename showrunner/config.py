@@ -12,8 +12,10 @@ MODEL_WRITER = "qwen3.7-max"      # screenplay quality matters most
 MODEL_PLANNER = "qwen3.7-plus"    # shot planning / critic — cheaper, plenty good
 MODEL_CHEAP = "qwen3.6-flash"     # smoke tests, summaries
 
-# Video
+# Video / image
 MODEL_VIDEO = "happyhorse-1.1-t2v"
+MODEL_IMAGE = "qwen-image-2.0-pro"
+COST_PER_STILL_USD = 0.04         # placeholder; calibrate from the console
 VIDEO_SIZE = "1280*720"
 CLIP_SECONDS = 5
 

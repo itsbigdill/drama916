@@ -140,6 +140,30 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
   #detail { text-align: center; font-family: "JetBrains Mono", monospace; font-size: 12.5px;
             color: rgba(244,240,255,.45); margin-top: 12px; min-height: 18px; }
 
+  #panes { display: grid; }
+  #formPane, #runPane { grid-area: 1/1; transition: transform .55s cubic-bezier(.22,.8,.3,1), opacity .4s ease; }
+  #runPane { transform: translateX(112%); opacity: 0; pointer-events: none; }
+  #panes.running #formPane { transform: translateX(-112%); opacity: 0; pointer-events: none; }
+  #panes.running #runPane { transform: none; opacity: 1; pointer-events: auto; }
+  #beacon { width: 70px; height: 70px; margin: 14px auto 6px; position: relative; display: none; }
+  #beacon .core { position: absolute; inset: 21px; border-radius: 50%;
+                  background: radial-gradient(circle at 35% 30%, #FF9A8F, #D62B2B);
+                  box-shadow: 0 0 26px rgba(255,77,69,.85); animation: recp 1.1s ease-in-out infinite; }
+  #beacon::before, #beacon::after { content: ""; position: absolute; inset: 0; border-radius: 50%;
+                  border: 1px solid rgba(255,77,69,.4); animation: ring 2.2s linear infinite; }
+  #beacon::after { animation-delay: 1.1s; }
+  @keyframes recp { 50% { transform: scale(1.18); } }
+  @keyframes ring { 0% { transform: scale(.55); opacity: 1; } 100% { transform: scale(1.35); opacity: 0; } }
+  #mock { display: none; text-align: center; font-family: "JetBrains Mono", monospace;
+          font-size: 12px; color: rgba(244,240,255,.4); min-height: 17px; margin-bottom: 4px; }
+  #boardgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; }
+  .bcell { position: relative; }
+  .bcell img { width: 100%; border-radius: 12px; display: block;
+               box-shadow: 0 10px 26px rgba(0,0,0,.5); }
+  .bcell .bn { position: absolute; top: 6px; left: 6px; background: rgba(8,7,14,.72);
+               color: #CFC2FF; font-family: "JetBrains Mono", monospace; font-size: 10.5px;
+               font-weight: 700; border-radius: 8px; padding: 2px 7px; }
+  .bcell .bs { font-size: 11.5px; color: rgba(244,240,255,.55); margin-top: 5px; line-height: 1.35; }
   #shotlist { margin-top: 14px; }
   .shot { display: flex; gap: 12px; align-items: baseline; padding: 9px 4px;
           border-top: 1px solid rgba(255,255,255,.07); }
@@ -179,6 +203,8 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
 <div class="wordmark">showrunner<span class="dot">.</span></div>
 
 <div class="glass">
+<div id="panes">
+  <div id="formPane">
   <textarea id="log" placeholder="One line. A whole film."></textarea>
   <div class="row" style="flex-wrap:wrap">
     <span class="seg" data-k="fmt"><button class="chip on" data-v="916">9:16</button><button class="chip" data-v="169">16:9</button></span>
@@ -191,7 +217,11 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
   <div class="row">
     <button id="go" class="go">Action</button>
   </div>
+  </div><!-- /formPane -->
 
+  <div id="runPane">
+  <div id="beacon"><span class="core"></span></div>
+  <div id="mock"></div>
   <div id="steps">
     <div class="step" data-s="script"><div class="d"></div>SCRIPT</div>
     <div class="step" data-s="board"><div class="d"></div>BOARD</div>
@@ -223,6 +253,8 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
     </div>
   </div>
   <div id="err"></div>
+  </div><!-- /runPane -->
+</div><!-- /panes -->
 </div>
 
 <div class="foot"><a href="https://www.qwencloud.com">Qwen + HappyHorse on Alibaba Cloud</a></div>
@@ -245,6 +277,22 @@ document.querySelectorAll(".seg").forEach(function (seg) {
     };
   });
 });
+
+// студійні рядки під маяком
+var MOCKS = [
+  "Waking the screenwriter…", "The critic demands a rewrite…",
+  "Casting is arguing about the lead…", "Storyboards taped to the wall…",
+  "Convincing the director it's fine…", "Craft services ran out of coffee…",
+  "Polishing lens no. 4…", "Rendering the dailies reel…",
+  "The editor found a better take…", "Projector warming up…"
+];
+var mockIx = 0;
+setInterval(function () {
+  var m = $("mock");
+  if (m.style.display !== "block") return;
+  mockIx = (mockIx + 1) % MOCKS.length;
+  m.textContent = MOCKS[mockIx];
+}, 2700);
 
 // rotating idea placeholder
 var IDEAS = [
@@ -270,7 +318,12 @@ $("go").onclick = function () {
   fetch("/run", { method: "POST", headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ logline: logline, vertical: opts.fmt === "916",
                                          shots: +opts.len, genre: opts.genre, cast: opts.cast }) })
-    .then(function () { $("steps").style.display = "flex"; $("feed").style.display = "block"; poll(); });
+    .then(function () {
+      document.getElementById("panes").classList.add("running");
+      $("steps").style.display = "flex"; $("feed").style.display = "block";
+      $("beacon").style.display = "block"; $("mock").style.display = "block";
+      poll();
+    });
 };
 
 function feedRows(s) {
@@ -288,16 +341,27 @@ function feedRows(s) {
 
 function showBoard(s) {
   var b = s.board || {};
-  $("shotlist").innerHTML = (b.shots || []).map(function (sh) {
-    return '<div class="shot"><span class="sn">' + String(sh.id).padStart(2, "0") + '</span>' +
-      '<span class="st">' + (sh.subtitle || "") +
-      '<span class="sp">' + (sh.prompt || "").slice(0, 90) + '…</span></span></div>';
-  }).join("");
+  var withImgs = (b.shots || []).some(function (sh) { return sh.img; });
+  if (withImgs) {
+    $("shotlist").innerHTML = '<div id="boardgrid">' + b.shots.map(function (sh) {
+      return '<div class="bcell"><span class="bn">' + String(sh.id).padStart(2, "0") + '</span>' +
+        '<img src="/video?p=' + encodeURIComponent(sh.img) + '">' +
+        '<div class="bs">' + (sh.subtitle || "") + '</div></div>';
+    }).join("") + "</div>";
+  } else {
+    $("shotlist").innerHTML = (b.shots || []).map(function (sh) {
+      return '<div class="shot"><span class="sn">' + String(sh.id).padStart(2, "0") + '</span>' +
+        '<span class="st">' + (sh.subtitle || "") +
+        '<span class="sp">' + (sh.prompt || "").slice(0, 90) + '…</span></span></div>';
+    }).join("");
+  }
   $("film").textContent = b.estimate ? "Film it · ~$" + Math.round(b.estimate) : "Film it";
   $("film").onclick = function () {
     this.disabled = true;
     fetch("/approve", { method: "POST" }).then(function () {
-      $("board").style.display = "none"; poll();
+      $("board").style.display = "none";
+      $("beacon").style.display = "block"; $("mock").style.display = "block";
+      poll();
     });
   };
   $("board").style.display = "block";
@@ -306,20 +370,28 @@ function showBoard(s) {
 function poll() {
   fetch("/status").then(function (r) { return r.json(); }).then(function (s) {
     var isApprove = s.stage === "approve";
-    var idx = isApprove ? 3 : ORDER.indexOf(s.stage);
+    var isStills = s.stage === "stills";
+    var idx = (isApprove || isStills) ? 3 : ORDER.indexOf(s.stage);
     document.querySelectorAll(".step").forEach(function (el, i) {
       el.className = "step" + (i < idx || s.stage === "done" ? " done"
         : (i === idx && !isApprove) ? " on" : "");
     });
     feedRows(s);
-    if (isApprove) { $("detail").textContent = ""; showBoard(s); return; }
+    if (isApprove) {
+      $("detail").textContent = "";
+      $("beacon").style.display = "none"; $("mock").style.display = "none";
+      showBoard(s); return;
+    }
+    $("beacon").style.display = "block"; $("mock").style.display = "block";
     var el = Math.round((Date.now() - t0) / 1000);
     $("detail").textContent =
-      s.stage === "film" && s.detail ? "shot " + s.detail + " · " + el + "s" :
+      isStills && s.detail ? "sketching " + s.detail + " · " + el + "s" :
+      s.stage === "film" && s.detail ? "rendering shot " + s.detail + " · " + el + "s" :
       s.stage === "dailies" && s.detail ? "reviewing " + s.detail + " · " + el + "s" :
       s.stage !== "done" ? el + "s" : "";
     if (s.stage === "done") {
       $("steps").style.display = "none"; $("detail").textContent = "";
+      $("beacon").style.display = "none"; $("mock").style.display = "none";
       $("player").src = s.video;
       $("dl").href = s.video;
       $("title").textContent = s.title || "";
@@ -371,13 +443,14 @@ class H(BaseHTTPRequestHandler):
             with lock:
                 self._json(200, dict(state))
         elif path == "/video":
-            # only serve mp4s that live under runs/ — no path traversal
+            # serves run artifacts (film + storyboard stills); runs/ only, no traversal
+            types = {".mp4": "video/mp4", ".png": "image/png", ".jpg": "image/jpeg"}
             p = Path(self.path.split("p=", 1)[-1]).resolve()
             runs = (Path(__file__).parent / "runs").resolve()
-            if p.suffix == ".mp4" and p.is_file() and p.is_relative_to(runs):
+            if p.suffix in types and p.is_file() and p.is_relative_to(runs):
                 data = p.read_bytes()
                 self.send_response(200)
-                self.send_header("Content-Type", "video/mp4")
+                self.send_header("Content-Type", types[p.suffix])
                 self.send_header("Content-Length", str(len(data)))
                 self.end_headers()
                 self.wfile.write(data)
