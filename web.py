@@ -614,5 +614,13 @@ class H(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
+    # прогрів тренд-кешу у фоні: перший відвідувач не чекає веб-пошук
+    def _warm():
+        try:
+            from showrunner.trends import fetch_trends
+            fetch_trends("today")
+        except Exception as e:
+            print("trend warm-up failed:", e)
+    threading.Thread(target=_warm, daemon=True).start()
     print(f"showrunner web → http://localhost:{PORT}")
     ThreadingHTTPServer(("0.0.0.0", PORT), H).serve_forever()
