@@ -20,13 +20,19 @@ PORT = 8090
 
 # single-run job state, updated by the pipeline's progress callback
 state = {"running": False, "stage": "idle", "detail": "", "video": None,
-         "cost": None, "error": None, "title": "", "caption": "", "log": {}}
+         "cost": None, "error": None, "title": "", "caption": "", "log": {},
+         "board": None}
 lock = threading.Lock()
+approve_event = threading.Event()
 
 
 def start_run(logline: str, dry_run: bool, vertical: bool):
     def cb(stage: str, detail: str):
         with lock:
+            if stage == "approve":
+                state["stage"] = "approve"
+                state["board"] = json.loads(detail)
+                return
             if stage == "done":
                 d = json.loads(detail)
                 state.update(stage="done", detail="", cost=str(d["cost"]),
@@ -50,14 +56,16 @@ def start_run(logline: str, dry_run: bool, vertical: bool):
 
     def job():
         try:
-            pipeline.run(logline, dry_run=dry_run, cb=cb, vertical=vertical)
+            pipeline.run(logline, dry_run=dry_run, cb=cb, vertical=vertical,
+                         approval=approve_event.wait)
         except BaseException as e:  # SystemExit included (budget cap)
             with lock:
                 state.update(error=str(e), running=False, stage="error")
 
+    approve_event.clear()
     with lock:
         state.update(running=True, stage="script", detail="", video=None,
-                     cost=None, error=None, title="", caption="", log={})
+                     cost=None, error=None, title="", caption="", log={}, board=None)
     threading.Thread(target=job, daemon=True).start()
 
 
@@ -126,6 +134,13 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
   #detail { text-align: center; font-family: "JetBrains Mono", monospace; font-size: 12.5px;
             color: rgba(244,240,255,.45); margin-top: 12px; min-height: 18px; }
 
+  #shotlist { margin-top: 14px; }
+  .shot { display: flex; gap: 12px; align-items: baseline; padding: 9px 4px;
+          border-top: 1px solid rgba(255,255,255,.07); }
+  .shot .sn { font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 700;
+              color: #A08CFF; flex: 0 0 26px; }
+  .shot .st { font-size: 14px; color: rgba(244,240,255,.78); }
+  .shot .sp { font-size: 12px; color: rgba(244,240,255,.38); display: block; margin-top: 1px; }
   #feed { margin-top: 6px; display: none; }
   .frow { display: flex; gap: 12px; align-items: baseline; padding: 10px 4px;
           border-top: 1px solid rgba(255,255,255,.07); }
@@ -175,6 +190,14 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
   <div id="detail"></div>
   <div id="feed"></div>
 
+  <div id="board" style="display:none">
+    <div id="shotlist"></div>
+    <div class="row" style="margin-top:18px">
+      <button id="film" class="go">Film it</button>
+      <button class="ghost" onclick="location.reload()">Start over</button>
+    </div>
+  </div>
+
   <div id="cinema">
     <video id="player" controls playsinline></video>
     <div id="title"></div>
@@ -195,6 +218,23 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
 var $ = function (id) { return document.getElementById(id); };
 var ORDER = ["script", "board", "critic", "film", "cut"];
 var dry = false, vert = true, t0 = null;
+
+// rotating idea placeholder
+var IDEAS = [
+  "A robot janitor on a space station finds a houseplant",
+  "An aging boxer teaches his granddaughter to waltz",
+  "A lighthouse keeper adopts a lost baby seagull",
+  "Two rival street food vendors fall for the same customer",
+  "A retired spy joins a suburban book club",
+  "The last payphone on Earth starts ringing",
+  "A grandma secretly races drones at night"
+];
+var ideaIx = 0;
+setInterval(function () {
+  if ($("log").value) return;
+  ideaIx = (ideaIx + 1) % IDEAS.length;
+  $("log").placeholder = "One line. A whole film.\n“" + IDEAS[ideaIx] + "”";
+}, 3200);
 $("dry").onclick = function () { dry = !dry; this.classList.toggle("on", dry); };
 $("vert").onclick = function () { vert = !vert; this.classList.toggle("on", vert); };
 
@@ -218,13 +258,33 @@ function feedRows(s) {
   }).join("");
 }
 
+function showBoard(s) {
+  var b = s.board || {};
+  $("shotlist").innerHTML = (b.shots || []).map(function (sh) {
+    return '<div class="shot"><span class="sn">' + String(sh.id).padStart(2, "0") + '</span>' +
+      '<span class="st">' + (sh.subtitle || "") +
+      '<span class="sp">' + (sh.prompt || "").slice(0, 90) + '…</span></span></div>';
+  }).join("");
+  $("film").textContent = b.estimate ? "Film it · ~$" + Math.round(b.estimate) : "Film it";
+  $("film").onclick = function () {
+    this.disabled = true;
+    fetch("/approve", { method: "POST" }).then(function () {
+      $("board").style.display = "none"; poll();
+    });
+  };
+  $("board").style.display = "block";
+}
+
 function poll() {
   fetch("/status").then(function (r) { return r.json(); }).then(function (s) {
-    var idx = ORDER.indexOf(s.stage);
+    var isApprove = s.stage === "approve";
+    var idx = isApprove ? 3 : ORDER.indexOf(s.stage);
     document.querySelectorAll(".step").forEach(function (el, i) {
-      el.className = "step" + (i < idx || s.stage === "done" ? " done" : i === idx ? " on" : "");
+      el.className = "step" + (i < idx || s.stage === "done" ? " done"
+        : (i === idx && !isApprove) ? " on" : "");
     });
     feedRows(s);
+    if (isApprove) { $("detail").textContent = ""; showBoard(s); return; }
     var el = Math.round((Date.now() - t0) / 1000);
     $("detail").textContent =
       s.stage === "film" && s.detail ? "shot " + s.detail + " · " + el + "s" :
@@ -298,6 +358,13 @@ class H(BaseHTTPRequestHandler):
             self._json(404, {"error": "not found"})
 
     def do_POST(self):
+        if self.path == "/approve":
+            approve_event.set()
+            with lock:
+                if state["stage"] == "approve":
+                    state["stage"] = "film"
+                    state["board"] = None
+            return self._json(200, {"ok": True})
         if self.path != "/run":
             return self._json(404, {"error": "not found"})
         with lock:

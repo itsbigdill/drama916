@@ -23,7 +23,10 @@ ProgressCB = Optional[Callable[[str, str], None]]
 
 
 def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
-        vertical: bool = False) -> Path:
+        vertical: bool = False, approval: Optional[Callable[[], None]] = None) -> Path:
+    """approval: optional blocking human checkpoint called AFTER the critic and
+    BEFORE any video credit is spent. The web UI shows the storyboard and blocks
+    here until the human hits Film it. CLI passes None (no pause)."""
     notify = cb or (lambda stage, detail: None)
     size = "720*1280" if vertical else config.VIDEO_SIZE
     ledger = Ledger()
@@ -72,10 +75,17 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
         raise SystemExit(f"Estimated ${estimate:.2f} > MAX_BUDGET_USD "
                          f"${config.MAX_BUDGET_USD} — trim shots or raise the cap.")
 
+    shot_list = shots["shots"]
+    if approval is not None:
+        notify("approve", json.dumps({
+            "estimate": 0 if dry_run else estimate,
+            "shots": [{"id": s["id"], "subtitle": s.get("subtitle", ""),
+                       "prompt": s.get("prompt", "")} for s in shot_list]}))
+        approval()  # blocks until the human approves the storyboard
+
     # HappyHorse takes ~3 min per clip; sequential = ~40 min per film.
     # Generate concurrently (tasks queue server-side) — wall clock ≈ one clip.
     console.rule(f"4/5 Video generation ({'DRY RUN' if dry_run else f'~${estimate:.0f}'})")
-    shot_list = shots["shots"]
     done_count = 0
 
     if vertical:  # steer the video model toward 9:16 framing, not just a crop
