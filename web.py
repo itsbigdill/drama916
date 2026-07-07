@@ -122,8 +122,8 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</titl
   .wordmark { font-family: "Unbounded", system-ui; font-weight: 800; font-size: 28px;
               letter-spacing: -.02em; margin-bottom: 26px; color: #26244a; }
   .dot { color: #6C5CE7; }
-  #panes { width: 100%; max-width: 600px; display: flex; flex-direction: column; gap: 18px; }
-  .glass { width: 100%; border-radius: 28px; padding: 22px;
+  #panes { width: 100%; max-width: 680px; display: flex; flex-direction: column; gap: 20px; }
+  .glass { width: 100%; border-radius: 30px; padding: 30px 30px 32px;
            background: rgba(255,255,255,.82);
            border: 1px solid #EAE8F6;
            backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
@@ -216,18 +216,20 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</titl
   @keyframes ring { 0% { transform: scale(.55); opacity: 1; } 100% { transform: scale(1.35); opacity: 0; } }
   #mock { display: none; text-align: center; font-family: "JetBrains Mono", monospace;
           font-size: 12px; color: #A9A6C6; min-height: 17px; margin-bottom: 4px; }
-  #boardgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; }
+  #boardgrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-top: 24px; }
   .bcell { position: relative; }
-  .bcell img { width: 100%; border-radius: 12px; display: block;
-               box-shadow: 0 10px 24px rgba(90,70,200,.18); }
-  .bfall { border: 1.5px dashed #D9D5EE; border-radius: 12px; background: #FBFAFF; }
+  .bcell img { width: 100%; border-radius: 16px; display: block;
+               box-shadow: 0 14px 34px rgba(90,70,200,.20); }
+  .bfall { border: 1.5px dashed #D9D5EE; border-radius: 16px; background: #FBFAFF; }
   #boardgrid.v916 .bfall { aspect-ratio: 9/16; }
   #boardgrid.v169 .bfall { aspect-ratio: 16/9; }
-  .bcell .bp { font-size: 11px; color: #A19FBE; margin-top: 3px; line-height: 1.35; }
-  .bcell .bn { position: absolute; top: 6px; left: 6px; background: rgba(255,255,255,.92);
-               color: #5646D6; font-family: "JetBrains Mono", monospace; font-size: 10.5px;
-               font-weight: 700; border-radius: 8px; padding: 2px 7px; }
-  .bcell .bs { font-size: 11.5px; color: #6B6890; margin-top: 5px; line-height: 1.35; }
+  .bcell .bp { font-size: 12.5px; color: #9490B4; margin-top: 5px; line-height: 1.5; }
+  .bcell .bp b { color: #6B6890; font-weight: 600; }
+  .bcell .bn { position: absolute; top: 10px; left: 10px; background: rgba(255,255,255,.94);
+               color: #5646D6; font-family: "JetBrains Mono", monospace; font-size: 11px;
+               font-weight: 700; border-radius: 9px; padding: 3px 9px;
+               box-shadow: 0 2px 8px rgba(34,33,58,.18); }
+  .bcell .bs { font-size: 15px; color: #33314E; font-weight: 600; margin-top: 12px; line-height: 1.4; }
   #shotlist { margin-top: 14px; }
   .shot { display: flex; gap: 12px; align-items: baseline; padding: 9px 4px;
           border-top: 1px solid #EDEBF7; }
@@ -251,17 +253,23 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</titl
   .lthumbs img { width: 52px; height: 74px; object-fit: cover; border-radius: 9px;
                  box-shadow: 0 6px 14px rgba(90,70,200,.16); animation: pop .3s ease; }
   @keyframes pop { 0% { transform: scale(.6); opacity: 0; } }
-  #feed { margin-top: 6px; display: none; }
-  .fblk { border-top: 1px solid #EDEBF7; padding: 4px 0; }
+  #feed { margin-top: 10px; display: none; }
+  .fblk { border-top: 1px solid #EFEDF9; padding: 6px 0; }
   .fblk summary { list-style: none; cursor: pointer; display: flex; gap: 12px;
-                  align-items: baseline; padding: 8px 4px; }
+                  align-items: baseline; padding: 12px 4px; border-radius: 12px;
+                  transition: background .15s; }
+  .fblk summary:hover { background: #FAF9FE; }
   .fblk summary::-webkit-details-marker { display: none; }
+  .fblk summary::after { content: "\203A"; margin-left: auto; color: #C6C3DE;
+                         font-size: 18px; transition: transform .2s; }
+  .fblk[open] summary::after { transform: rotate(90deg); }
   .fblk .fl { font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 700;
               letter-spacing: .12em; color: #6C5CE7; flex: 0 0 64px; }
   .fblk .fv { font-size: 14.5px; color: #33314E; }
   .fblk .fv b { font-family: "Unbounded", system-ui; font-weight: 500; font-size: 13.5px; }
-  .fbody { padding: 2px 4px 10px 76px; }
-  .scene { font-size: 13px; color: #55536E; padding: 5px 0; border-top: 1px dashed #EFEDF8; }
+  .fbody { padding: 4px 4px 16px 40px; }
+  .scene { font-size: 13px; color: #55536E; padding: 8px 0; border-top: 1px dashed #EFEDF8;
+           line-height: 1.5; }
   .scene:first-child { border-top: 0; }
   .scene .sn { font-family: "JetBrains Mono", monospace; font-size: 10.5px; font-weight: 700;
                color: #A08CFF; margin-right: 7px; }
@@ -280,7 +288,8 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</titl
   .gcell:nth-child(3n)::after { animation-delay: 1s; }
   @keyframes frost { from { background-position: 130% 0; } to { background-position: -130% 0; } }
   .fnote { font-family: "JetBrains Mono", monospace; font-size: 11.5px; color: #8B88AC;
-           padding: 3px 0; }
+           padding: 7px 0; line-height: 1.55; }
+  .fnote:first-child { color: #6B6890; }
   .fthumbs { display: flex; gap: 7px; flex-wrap: wrap; padding-top: 4px; }
   .fthumbs img { width: 52px; height: 74px; object-fit: cover; border-radius: 9px;
                  box-shadow: 0 6px 14px rgba(90,70,200,.16); }
@@ -300,14 +309,17 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</titl
   .ghost { border: 0; background: transparent; cursor: pointer; padding: 0 8px;
            color: #8B88AC; font: 700 13px -apple-system, system-ui; }
   #err { display: none; margin-top: 16px; font-size: 14px; color: #E5484D; }
-  .bx { position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; z-index: 2; }
-  .bbtn { width: 28px; height: 28px; border: 0; border-radius: 50%; cursor: pointer;
-          background: rgba(255,255,255,.92); color: #454363; font-size: 14px; line-height: 1;
-          box-shadow: 0 4px 12px rgba(34,33,58,.22); transition: transform .12s; }
-  .bbtn:hover { transform: scale(1.12); }
+  .bx { position: absolute; top: 10px; right: 10px; display: flex; gap: 7px; z-index: 2;
+        opacity: 1; transition: opacity .2s; }
+  .bbtn { width: 32px; height: 32px; border: 0; border-radius: 50%; cursor: pointer;
+          background: rgba(255,255,255,.95); color: #454363; font-size: 15px; line-height: 1;
+          box-shadow: 0 4px 14px rgba(34,33,58,.24); transition: transform .12s, background .15s; }
+  .bbtn:hover { transform: scale(1.12); background: #FFF; }
+  .bbtn.dr:hover { color: #E5484D; }
   .bbtn:disabled { opacity: .35; transform: none; }
-  .bscene { font-size: 11.5px; line-height: 1.45; color: #8B88AC; margin-top: 5px; }
-  .bscene b { color: #55536E; font-weight: 600; }
+  @media (hover: hover) { .bx { opacity: 0; } .bcell:hover .bx { opacity: 1; } }
+  .bscene { font-size: 12.5px; line-height: 1.5; color: #9490B4; margin-top: 6px; }
+  .bscene b { color: #6B6890; font-weight: 600; }
   .bcell.rf img { filter: saturate(.35) brightness(1.12) blur(2px); opacity: .68; }
   .bcell.rf::after { content: ""; position: absolute; inset: 0; border-radius: inherit;
     background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,.75) 50%, transparent 65%);
@@ -378,7 +390,7 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</titl
     <div class="step" data-s="cut"><div class="d"></div>CUT</div>
   </div>
   <div id="feed"></div>
-  <div id="dbg" style="margin-top:10px;font:10px/1.4 monospace;color:#C6C3DE"></div>
+  <div id="dbg" style="display:none;margin-top:10px;font:10px/1.4 monospace;color:#C6C3DE"></div>
 
   <div id="board" style="display:none">
     <div id="shotlist"></div>
@@ -680,13 +692,14 @@ function feedRows(s) {
         : (L.critic.score != null ? "score " + L.critic.score + "/10" : "approved") +
           " \u00B7 " + L.critic.rounds + " round" + (L.critic.rounds > 1 ? "s" : "") +
           (L.critic.shots ? " \u00B7 " + L.critic.shots + " shots final" : "");
-    h += blk("CRITIC", chead, cbody, s.stage === "stills" || s.stage === "approve");
+    h += blk("CRITIC", chead, cbody, false);
   }
-  if (live.stills && live.stills.length && s.stage !== "stills") {
+  // during approve the big board grid IS the stills — don't duplicate them here
+  if (live.stills && live.stills.length && s.stage !== "stills" && s.stage !== "approve") {
     h += blk("STILLS", live.stills.length + " frames painted",
              '<div class="fthumbs">' + live.stills.map(function (st) {
                return '<img src="/video?p=' + encodeURIComponent(st.img) + '">';
-             }).join("") + "</div>", s.stage === "approve");
+             }).join("") + "</div>", false);
   }
   if (s.stage === "cut" || s.stage === "done") h += blk("FILM", "all shots rendered", "", false);
   $("feed").innerHTML = h;
@@ -702,10 +715,13 @@ function showBoard(s) {
   var b = s.board || {};
   var withImgs = (b.shots || []).some(function (sh) { return sh.img; });
   if (withImgs) {
+    var prevScene = null;
     $("shotlist").innerHTML = '<div id="boardgrid" class="v' + opts.fmt + '">' + b.shots.map(function (sh, i) {
       var sc = sceneOf(s, sh);
-      var scene = sc ? '<b>' + esc2(sc.setting) + '.</b> ' + esc2(sc.action)
+      // repeat the setting only when the scene changes — no "same booth ×3" wall
+      var scene = sc ? ((sh.scene_id !== prevScene ? '<b>' + esc2(sc.setting) + '.</b> ' : "") + esc2(sc.action))
                      : esc2((sh.prompt || "").split(". ").pop().slice(0, 90));
+      if (sc) prevScene = sh.scene_id;
       return '<div class="bcell" data-id="' + sh.id + '"><span class="bn">' + String(sh.id).padStart(2, "0") + '</span>' +
         '<span class="bx"><button class="bbtn rd" title="redraw">\u21BB</button>' +
         '<button class="bbtn dr" title="remove">\u2715</button></span>' +
@@ -784,7 +800,7 @@ function poll() {
     feedRows(s);
     var snap = "stage=" + s.stage + " feed=" + $("feed").innerHTML.length +
                " live=" + $("live").innerHTML.length + " logKeys=" + Object.keys(s.log || {}).join(",");
-    $("dbg").textContent = snap;
+    if (location.search.indexOf("dbg") >= 0) { $("dbg").style.display = "block"; $("dbg").textContent = snap; }
     if (s.stage !== window.__lastStage) {
       window.__lastStage = s.stage;
       fetch("/clientlog", { method: "POST", headers: { "Content-Type": "application/json" },
