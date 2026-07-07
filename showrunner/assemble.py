@@ -21,7 +21,38 @@ def write_srt(shots: list[dict], path: Path):
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
+def _size_of(clip: Path) -> str:
+    out = subprocess.run(
+        ["ffprobe", "-v", "quiet", "-select_streams", "v:0",
+         "-show_entries", "stream=width,height", "-of", "csv=p=0", str(clip)],
+        check=True, capture_output=True, text=True).stdout.strip().splitlines()[0]
+    return out  # "1080,1920"
+
+
+def _normalize(clip_paths: list[Path]) -> list[Path]:
+    """i2v clips are 1080p while t2v fallbacks are 720p; concat demands one size.
+    Scale+pad every odd clip to the majority size."""
+    sizes = [_size_of(p) for p in clip_paths]
+    target = max(set(sizes), key=sizes.count)
+    w, h = target.split(",")
+    fixed = []
+    for p, s in zip(clip_paths, sizes):
+        if s == target:
+            fixed.append(p)
+            continue
+        norm = p.with_name(p.stem + "_norm.mp4")
+        subprocess.run(
+            ["ffmpeg", "-y", "-loglevel", "error", "-i", str(p),
+             "-vf", f"scale={w}:{h}:force_original_aspect_ratio=decrease,"
+                    f"pad={w}:{h}:(ow-iw)/2:(oh-ih)/2",
+             "-c:v", "libx264", "-pix_fmt", "yuv420p", str(norm)],
+            check=True)
+        fixed.append(norm)
+    return fixed
+
+
 def assemble(clip_paths: list[Path], shots: list[dict], run_dir: Path) -> Path:
+    clip_paths = _normalize(clip_paths)
     concat_list = run_dir / "concat.txt"
     concat_list.write_text("\n".join(f"file '{p.resolve()}'" for p in clip_paths))
 

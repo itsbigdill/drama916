@@ -24,15 +24,26 @@ def _headers():
 
 
 def generate_clip(shot: dict, out_path: Path, ledger: Ledger, dry_run: bool,
-                  size: str = config.VIDEO_SIZE) -> Path:
+                  size: str = config.VIDEO_SIZE,
+                  first_frame: Path | None = None) -> Path:
     if dry_run:
         _placeholder_clip(shot, out_path, size)
         ledger.record("video_dryrun", config.MODEL_VIDEO)
         return out_path
 
-    body = {"model": config.MODEL_VIDEO,
-            "input": {"prompt": shot["prompt"]},
-            "parameters": {"size": size, "duration": config.CLIP_SECONDS}}
+    if first_frame is not None and first_frame.exists():
+        # i2v: the human-approved storyboard still IS the first frame of the clip —
+        # the pixels you greenlit are the pixels that come alive. Size is derived
+        # from the image (and upscaled to 1080p by the model), so no size param.
+        from .storyboard import data_uri
+        body = {"model": config.MODEL_VIDEO_I2V,
+                "input": {"prompt": shot["prompt"],
+                          "media": [{"type": "first_frame", "url": data_uri(first_frame)}]},
+                "parameters": {"duration": config.CLIP_SECONDS}}
+    else:
+        body = {"model": config.MODEL_VIDEO,
+                "input": {"prompt": shot["prompt"]},
+                "parameters": {"size": size, "duration": config.CLIP_SECONDS}}
     r = httpx.post(CREATE_URL, json=body, headers=_headers(), timeout=60)
     r.raise_for_status()
     task_id = r.json()["output"]["task_id"]
@@ -55,7 +66,7 @@ def generate_clip(shot: dict, out_path: Path, ledger: Ledger, dry_run: bool,
         with open(out_path, "wb") as f:
             for chunk in resp.iter_bytes():
                 f.write(chunk)
-    ledger.record("video", config.MODEL_VIDEO, clips=1, clip_cost=config.COST_PER_CLIP_USD)
+    ledger.record("video", body["model"], clips=1, clip_cost=config.COST_PER_CLIP_USD)
     return out_path
 
 

@@ -75,7 +75,8 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
     n = len(shots["shots"])
     console.print(f"approved after {len(critique_history)} round(s), {n} shots")
     last_score = critique_history[-1].get("score") if critique_history else None
-    notify("critic", json.dumps({"rounds": len(critique_history), "score": last_score}))
+    notify("critic", json.dumps({"rounds": len(critique_history), "score": last_score,
+                                 "shots": n}))
 
     estimate = n * config.COST_PER_CLIP_USD
     if not dry_run and estimate > config.MAX_BUDGET_USD:
@@ -87,15 +88,25 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
         for s in shot_list:
             s["prompt"] = "Vertical 9:16 composition, subject centered. " + s["prompt"]
 
+    stills: dict[int, str] = {}
     if approval is not None:
         # draw the storyboard as pictures — the human approves frames, not prompts
-        stills: dict[int, str] = {}
         if not dry_run:
-            from .storyboard import sketch_all
+            from .storyboard import cast_all, sketch_all
+            # character sheets first: one canonical portrait per character, then
+            # every still is generated AGAINST those portraits → same faces across
+            # the whole board (and, via i2v, across the whole film)
+            characters = screenplay.get("characters", [])[:3]
+            refs: list = []
+            if characters:
+                notify("stills", f"casting 0/{len(characters)}")
+                refs = cast_all(characters, size, run_dir / "cast", ledger,
+                                lambda d, n: notify("stills", f"casting {d}/{n}"))
             notify("stills", f"0/{len(shot_list)}")
             board_dir = run_dir / "board"
             paths = sketch_all(shot_list, size, board_dir, ledger,
-                               lambda d, n: notify("stills", f"{d}/{n}"))
+                               lambda d, n: notify("stills", f"{d}/{n}"),
+                               refs=refs or None)
             stills = {s["id"]: str(p) for s, p in zip(shot_list, paths) if p}
         notify("approve", json.dumps({
             "estimate": 0 if dry_run else estimate,
@@ -109,11 +120,16 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
     console.rule(f"4/5 Video generation ({'DRY RUN' if dry_run else f'~${estimate:.0f}'})")
     done_count = 0
 
+    def first_frame_of(shot: dict) -> Path | None:
+        p = stills.get(shot["id"])
+        return Path(p) if p else None
+
     def make(shot: dict) -> Path:
         nonlocal done_count
         out = clips_dir / f"shot_{shot['id']:02}.mp4"
         console.print(f"  shot {shot['id']}: {shot['prompt'][:70]}…")
-        path = generate_clip(shot, out, ledger, dry_run, size=size)
+        path = generate_clip(shot, out, ledger, dry_run, size=size,
+                             first_frame=first_frame_of(shot))
         done_count += 1
         notify("film", f"{done_count}/{len(shot_list)}")
         return path
@@ -149,7 +165,8 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
             reshoots_left -= 1
             reshot += 1
             try:
-                generate_clip(shot, clip, ledger, dry_run, size=size)  # overwrite the take
+                generate_clip(shot, clip, ledger, dry_run, size=size,
+                              first_frame=first_frame_of(shot))  # overwrite the take
             except Exception as e:
                 console.print(f"  reshoot of shot {shot['id']} failed ({e}) — keeping original")
         save("dailies.json", reports)

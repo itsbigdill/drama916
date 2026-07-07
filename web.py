@@ -7,6 +7,7 @@ Stdlib-only server (no new deps). One run at a time (it's a demo, not a farm).
 
 import json
 import threading
+from urllib.parse import unquote
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -21,15 +22,25 @@ PORT = 8090
 # single-run job state, updated by the pipeline's progress callback
 state = {"running": False, "stage": "idle", "detail": "", "video": None,
          "cost": None, "error": None, "title": "", "caption": "", "log": {},
-         "board": None}
+         "board": None, "run_id": 0}
 lock = threading.Lock()
-approve_event = threading.Event()
+# one approve Event PER RUN: an abandoned run keeps waiting on its own dead
+# event and can never sneak into the paid FILM stage.
+current_approve = {"ev": threading.Event()}
 
 
 def start_run(logline: str, dry_run: bool, vertical: bool,
               shots_target: int = 12, genre: str = "", cast: str = ""):
+    with lock:
+        state["run_id"] += 1
+        my_run = state["run_id"]
+    my_event = threading.Event()
+    current_approve["ev"] = my_event
+
     def cb(stage: str, detail: str):
         with lock:
+            if state["run_id"] != my_run:
+                return  # a Start over happened; this run is orphaned
             if stage == "approve":
                 state["stage"] = "approve"
                 state["board"] = json.loads(detail)
@@ -58,13 +69,13 @@ def start_run(logline: str, dry_run: bool, vertical: bool,
     def job():
         try:
             pipeline.run(logline, dry_run=dry_run, cb=cb, vertical=vertical,
-                         approval=approve_event.wait,
+                         approval=my_event.wait,
                          shots_target=shots_target, genre=genre, cast=cast)
         except BaseException as e:  # SystemExit included (budget cap)
             with lock:
-                state.update(error=str(e), running=False, stage="error")
+                if state["run_id"] == my_run:
+                    state.update(error=str(e), running=False, stage="error")
 
-    approve_event.clear()
     with lock:
         state.update(running=True, stage="script", detail="", video=None,
                      cost=None, error=None, title="", caption="", log={}, board=None)
@@ -133,9 +144,9 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
           font-size: 11px; font-weight: 700; letter-spacing: .14em; color: #B9B7D2; }
   .step .d { width: 13px; height: 13px; border-radius: 50%; margin: 0 auto 8px;
              background: #E4E2F1; }
-  .step.on { color: #5646D6; }
-  .step.on .d { background: radial-gradient(circle at 35% 30%, #C9BFFF, #6C5CE7);
-                box-shadow: 0 0 14px rgba(108,92,231,.7);
+  .step.on { color: #4232C8; }
+  .step.on .d { background: radial-gradient(circle at 35% 30%, #B4A6FF, #5B45E0);
+                box-shadow: 0 0 0 4px rgba(108,92,231,.16), 0 0 18px rgba(108,92,231,.85);
                 animation: pulse 1.2s ease-in-out infinite; }
   .step.done { color: #55536E; }
   .step.done .d { background: radial-gradient(circle at 35% 30%, #FFF, #A8A5C8);
@@ -164,6 +175,10 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
   .bcell { position: relative; }
   .bcell img { width: 100%; border-radius: 12px; display: block;
                box-shadow: 0 10px 24px rgba(90,70,200,.18); }
+  .bfall { border: 1.5px dashed #D9D5EE; border-radius: 12px; background: #FBFAFF; }
+  #boardgrid.v916 .bfall { aspect-ratio: 9/16; }
+  #boardgrid.v169 .bfall { aspect-ratio: 16/9; }
+  .bcell .bp { font-size: 11px; color: #A19FBE; margin-top: 3px; line-height: 1.35; }
   .bcell .bn { position: absolute; top: 6px; left: 6px; background: rgba(255,255,255,.92);
                color: #5646D6; font-family: "JetBrains Mono", monospace; font-size: 10.5px;
                font-weight: 700; border-radius: 8px; padding: 2px 7px; }
@@ -222,6 +237,7 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
   <div id="runPane">
   <div id="beacon"><span class="core"></span></div>
   <div id="mock"></div>
+  <div id="detail"></div>
   <div id="steps">
     <div class="step" data-s="script"><div class="d"></div>SCRIPT</div>
     <div class="step" data-s="board"><div class="d"></div>BOARD</div>
@@ -230,14 +246,13 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
     <div class="step" data-s="dailies"><div class="d"></div>DAILIES</div>
     <div class="step" data-s="cut"><div class="d"></div>CUT</div>
   </div>
-  <div id="detail"></div>
   <div id="feed"></div>
 
   <div id="board" style="display:none">
     <div id="shotlist"></div>
     <div class="row" style="margin-top:18px">
       <button id="film" class="go">Film it</button>
-      <button class="ghost" onclick="location.reload()">Start over</button>
+      <button class="ghost" onclick="startOver()">Start over</button>
     </div>
   </div>
 
@@ -249,7 +264,7 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
     <div class="row">
       <a id="dl" class="chip" download="showrunner.mp4">Download</a>
       <button id="copycap" class="chip">Copy caption</button>
-      <button class="ghost" onclick="location.reload()" style="margin-left:auto">New film</button>
+      <button class="ghost" onclick="startOver()" style="margin-left:auto">New film</button>
     </div>
   </div>
   <div id="err"></div>
@@ -261,6 +276,9 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
 
 <script>
 var $ = function (id) { return document.getElementById(id); };
+function startOver() {
+  fetch("/reset", { method: "POST" }).finally(function () { location.reload(); });
+}
 var ORDER = ["script", "board", "critic", "film", "dailies", "cut"];
 var t0 = null;
 var opts = { fmt: "916", len: "12", genre: "drama", cast: "realistic human characters" };
@@ -321,7 +339,14 @@ $("go").onclick = function () {
   fetch("/run", { method: "POST", headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ logline: logline, vertical: opts.fmt === "916",
                                          shots: +opts.len, genre: opts.genre, cast: opts.cast }) })
-    .then(function () {
+    .then(function (r) {
+      if (!r.ok) {
+        return r.json().then(function (e) {
+          $("go").disabled = false; $("log").disabled = false;
+          $("err").style.display = "block";
+          $("err").textContent = e.error || "could not start";
+        });
+      }
       document.getElementById("panes").classList.add("running");
       $("steps").style.display = "flex"; $("feed").style.display = "block";
       $("beacon").style.display = "block"; $("mock").style.display = "block";
@@ -333,7 +358,9 @@ function feedRows(s) {
   var L = s.log || {}, rows = [];
   if (L.script) rows.push(["SCRIPT", "<b>“" + (L.script.title || "") + "”</b> · " + L.script.scenes + " scenes"]);
   if (L.board) rows.push(["BOARD", L.board.shots + " shots planned"]);
-  if (L.critic) rows.push(["CRITIC", (L.critic.score != null ? L.critic.score + "/10" : "approved") + " · " + L.critic.rounds + " round" + (L.critic.rounds > 1 ? "s" : "")]);
+  if (L.critic) rows.push(["CRITIC", (L.critic.score != null ? "score " + L.critic.score + "/10" : "approved")
+        + " · " + L.critic.rounds + " round" + (L.critic.rounds > 1 ? "s" : "")
+        + (L.critic.shots ? " · " + L.critic.shots + " shots final" : "")]);
   if (L.dailies) rows.push(["DAILIES", L.dailies.reshot
         ? L.dailies.reshot + " take" + (L.dailies.reshot > 1 ? "s" : "") + " reshot — " + (L.dailies.last_reason || "")
         : "all " + L.dailies.approved + " takes approved"]);
@@ -346,10 +373,15 @@ function showBoard(s) {
   var b = s.board || {};
   var withImgs = (b.shots || []).some(function (sh) { return sh.img; });
   if (withImgs) {
-    $("shotlist").innerHTML = '<div id="boardgrid">' + b.shots.map(function (sh) {
+    $("shotlist").innerHTML = '<div id="boardgrid" class="v' + opts.fmt + '">' + b.shots.map(function (sh) {
+      var action = (sh.prompt || "").split(". ").pop().slice(0, 70);
       return '<div class="bcell"><span class="bn">' + String(sh.id).padStart(2, "0") + '</span>' +
-        '<img src="/video?p=' + encodeURIComponent(sh.img) + '">' +
-        '<div class="bs">' + (sh.subtitle || "") + '</div></div>';
+        (sh.img
+          ? '<img src="/video?p=' + encodeURIComponent(sh.img) + '" ' +
+            'onerror="this.outerHTML=\'<div class=&quot;bfall&quot;></div>\'">'
+          : '<div class="bfall"></div>') +
+        '<div class="bs">' + (sh.subtitle || "") + '</div>' +
+        (action ? '<div class="bp">' + action + '</div>' : '') + '</div>';
     }).join("") + "</div>";
   } else {
     $("shotlist").innerHTML = (b.shots || []).map(function (sh) {
@@ -386,12 +418,15 @@ function poll() {
       showBoard(s); return;
     }
     $("beacon").style.display = "block"; $("mock").style.display = "block";
-    var el = Math.round((Date.now() - t0) / 1000);
+    var secs = Math.round((Date.now() - t0) / 1000);
+    var el = secs < 100 ? secs + "s"
+           : Math.floor(secs / 60) + "m " + String(secs % 60).padStart(2, "0") + "s";
     $("detail").textContent =
-      isStills && s.detail ? "sketching " + s.detail + " · " + el + "s" :
-      s.stage === "film" && s.detail ? "rendering shot " + s.detail + " · " + el + "s" :
-      s.stage === "dailies" && s.detail ? "reviewing " + s.detail + " · " + el + "s" :
-      s.stage !== "done" ? el + "s" : "";
+      isStills && s.detail ? "sketching " + s.detail + " · " + el :
+      s.stage === "film" && s.detail ? "rendering shot " + s.detail + " · " + el :
+      s.stage === "dailies" && s.detail ? "reviewing " + s.detail + " · " + el :
+      s.stage === "critic" && s.detail ? s.detail + " · " + el :
+      s.stage !== "done" ? el : "";
     if (s.stage === "done") {
       $("steps").style.display = "none"; $("detail").textContent = "";
       $("beacon").style.display = "none"; $("mock").style.display = "none";
@@ -448,7 +483,7 @@ class H(BaseHTTPRequestHandler):
         elif path == "/video":
             # serves run artifacts (film + storyboard stills); runs/ only, no traversal
             types = {".mp4": "video/mp4", ".png": "image/png", ".jpg": "image/jpeg"}
-            p = Path(self.path.split("p=", 1)[-1]).resolve()
+            p = Path(unquote(self.path.split("p=", 1)[-1])).resolve()
             runs = (Path(__file__).parent / "runs").resolve()
             if p.suffix in types and p.is_file() and p.is_relative_to(runs):
                 data = p.read_bytes()
@@ -464,11 +499,20 @@ class H(BaseHTTPRequestHandler):
 
     def do_POST(self):
         if self.path == "/approve":
-            approve_event.set()
+            current_approve["ev"].set()
             with lock:
                 if state["stage"] == "approve":
                     state["stage"] = "film"
                     state["board"] = None
+            return self._json(200, {"ok": True})
+        if self.path == "/reset":
+            # Start over: orphan whatever is running (its approve event dies
+            # with it — it can never reach the paid FILM stage) and go idle.
+            with lock:
+                state["run_id"] += 1
+                state.update(running=False, stage="idle", detail="", video=None,
+                             cost=None, error=None, title="", caption="", log={},
+                             board=None)
             return self._json(200, {"ok": True})
         if self.path != "/run":
             return self._json(404, {"error": "not found"})

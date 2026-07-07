@@ -14,6 +14,7 @@ MODEL_CHEAP = "qwen3.6-flash"     # smoke tests, summaries
 
 # Video / image
 MODEL_VIDEO = "happyhorse-1.1-t2v"
+MODEL_VIDEO_I2V = "happyhorse-1.1-i2v"   # approved still becomes the first frame
 MODEL_IMAGE = "qwen-image-2.0-pro"
 COST_PER_STILL_USD = 0.04         # placeholder; calibrate from the console
 VIDEO_SIZE = "1280*720"
