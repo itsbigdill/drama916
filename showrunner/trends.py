@@ -14,18 +14,22 @@ _TTL = {"today": 6 * 3600, "week": 24 * 3600}
 _cache: dict[str, tuple[float, list[dict]]] = {}
 
 SYSTEM = """You are a short-form video content strategist. Search the web for what is
-genuinely trending {scope} WORLDWIDE with a US/global lens — news, pop culture,
-sports, tech, viral memes. Mix regions; avoid leaning on one country's media. Pick 6
-DIVERSE topics that would make fun 15-60 second short films.
+happening and going viral {scope}. Return SPECIFIC, DATEABLE things — named events,
+releases, matches, viral moments: e.g. "World Cup 2026", a movie that premiered this
+week, a meme born days ago, a space/weather event underway.
+
+HARD BAN on generic evergreen themes ("AI video tools", "VR travel", "urban farming",
+"mobile photography"): if the topic could have been written any month of any year, it
+does NOT qualify. Every topic must be tied to NOW.
 
 For each topic write a logline: a 2-3 sentence fictional mini-drama scenario INSPIRED
-by the topic. Loglines must be filmable by an image/video model with strict content
-moderation: NO real people's names, NO brands, NO violence or darkness, NOTHING
-sexual/NSFW, NO politics, war or tragedy — upbeat, family-friendly fictional
-characters and situations that clearly wink at the trend.
+by it. Loglines must pass strict image/video moderation: NO real people's names, NO
+brands, NOTHING sexual, NO politics, war, violence or tragedy — upbeat, family-friendly
+fictional characters that clearly wink at the event.
 
 Reply ONLY JSON:
-{{"trends": [{{"topic": "2-4 words", "why": "one short factual line on why it's hot now",
+{{"trends": [{{"topic": "PILL LABEL, 2-3 words max (e.g. 'World Cup 2026', 'Fruit drama')",
+"why": "one short line: what exactly happened and when",
 "logline": "2-3 sentence scenario"}}]}}"""
 
 
@@ -55,7 +59,7 @@ def fetch_trends(period: str = "today") -> list[dict]:
             continue
         topic, why, logline = (str(t.get(k, "")).strip() for k in ("topic", "why", "logline"))
         if topic and logline:
-            trends.append({"topic": topic[:48], "why": why[:110], "logline": logline[:400]})
+            trends.append({"topic": topic[:28], "why": why[:110], "logline": logline[:400]})
     if trends:
         _cache[period] = (time.time(), trends)
     return trends

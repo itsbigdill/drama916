@@ -121,16 +121,14 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
   .trtab { border: 0; background: transparent; cursor: pointer; padding: 5px 12px;
            font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 700; color: #8B88AC; }
   .trtab.on { background: #ECE9FF; color: #5646D6; }
-  .trrow { display: flex; gap: 10px; overflow-x: auto; margin-top: 8px; padding-bottom: 6px;
-           scrollbar-width: thin; }
-  .tcard { min-width: 185px; max-width: 210px; flex: 0 0 auto; background: #F9F9FD;
-           border: 1px solid #E7E5F3; border-radius: 14px; padding: 11px 13px; cursor: pointer;
-           transition: transform .12s ease, box-shadow .2s ease, border-color .2s; }
-  .tcard:hover { transform: translateY(-2px); border-color: #C9BFFF;
-                 box-shadow: 0 10px 24px rgba(108,92,231,.14); }
-  .tcard .tt { font-size: 13px; font-weight: 700; color: #33314E; }
-  .tcard .tw { font-size: 11.5px; color: #8B88AC; margin-top: 3px; line-height: 1.35; }
-  .tskel { height: 58px; animation: skel 1.1s ease-in-out infinite; }
+  .trrow { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .tpill { background: #F4F3FA; border: 1px solid #E7E5F3; border-radius: 999px;
+           padding: 8px 15px; cursor: pointer; font-size: 13px; font-weight: 600;
+           color: #454363; transition: transform .1s, border-color .2s, background .2s; }
+  .tpill:hover { border-color: #C9BFFF; background: #ECE9FF; color: #5646D6; }
+  .tpill:active { transform: scale(.95); }
+  .tskel { width: 110px; height: 34px; border-radius: 999px; background: #F4F3FA;
+           border: 1px solid #E7E5F3; animation: skel 1.1s ease-in-out infinite; }
   @keyframes skel { 50% { opacity: .45; } }
   textarea.flash { border-color: #B9AFFF; box-shadow: 0 0 0 4px rgba(108,92,231,.18); }
   .opts { display: flex; flex-wrap: wrap; gap: 14px 22px; margin-top: 18px; }
@@ -335,10 +333,10 @@ document.querySelectorAll(".seg").forEach(function (seg) {
 var trCache = {};
 function renderTrends(list) {
   $("trends").innerHTML = list.map(function (tr, i) {
-    return '<div class="tcard" data-i="' + i + '"><div class="tt">' + tr.topic +
-           '</div><div class="tw">' + tr.why + '</div></div>';
+    return '<button class="tpill" data-i="' + i + '" title="' +
+           (tr.why || "").replace(/"/g, "&quot;") + '">' + tr.topic + '</button>';
   }).join("");
-  $("trends").querySelectorAll(".tcard").forEach(function (c) {
+  $("trends").querySelectorAll(".tpill").forEach(function (c) {
     c.onclick = function () {
       var tr = list[+c.dataset.i];
       var f = $("log");
@@ -350,7 +348,7 @@ function renderTrends(list) {
 }
 function loadTrends(period) {
   if (trCache[period]) { renderTrends(trCache[period]); return; }
-  $("trends").innerHTML = '<div class="tcard tskel"></div><div class="tcard tskel"></div><div class="tcard tskel"></div>';
+  $("trends").innerHTML = '<span class="tskel"></span><span class="tskel"></span><span class="tskel"></span><span class="tskel"></span>';
   fetch("/trends?period=" + period).then(function (r) { return r.json(); }).then(function (d) {
     trCache[period] = d.trends || [];
     renderTrends(trCache[period]);
