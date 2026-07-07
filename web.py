@@ -313,6 +313,7 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</titl
   <div id="beacon"><span class="core"></span></div>
   <div id="mock"></div>
   <div id="detail"></div>
+  <div id="live"></div>
   <div id="steps">
     <div class="step" data-s="script"><div class="d"></div>SCRIPT</div>
     <div class="step" data-s="board"><div class="d"></div>BOARD</div>
@@ -322,6 +323,7 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</titl
     <div class="step" data-s="cut"><div class="d"></div>CUT</div>
   </div>
   <div id="feed"></div>
+  <div id="dbg" style="margin-top:10px;font:10px/1.4 monospace;color:#C6C3DE"></div>
 
   <div id="board" style="display:none">
     <div id="shotlist"></div>
@@ -603,6 +605,14 @@ function poll() {
     setMockStage(s.stage);
     renderLive(s);
     feedRows(s);
+    var snap = "stage=" + s.stage + " feed=" + $("feed").innerHTML.length +
+               " live=" + $("live").innerHTML.length + " logKeys=" + Object.keys(s.log || {}).join(",");
+    $("dbg").textContent = snap;
+    if (s.stage !== window.__lastStage) {
+      window.__lastStage = s.stage;
+      fetch("/clientlog", { method: "POST", headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ err: "[telemetry] " + snap }) }).catch(function () {});
+    }
     if (isApprove) {
       $("detail").textContent = "";
       $("beacon").style.display = "none"; $("mock").style.display = "none";
@@ -642,7 +652,12 @@ function poll() {
       return;
     }
     setTimeout(poll, 1200);
-   } catch (e) { console.error("poll render:", e); setTimeout(poll, 2000); }
+   } catch (e) {
+    console.error("poll render:", e);
+    fetch("/clientlog", { method: "POST", headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ err: "[poll] " + (e && e.stack || e) }) }).catch(function () {});
+    setTimeout(poll, 2000);
+   }
   }).catch(function (e) { console.error("poll fetch:", e); setTimeout(poll, 2000); });
 }
 </script>"""
