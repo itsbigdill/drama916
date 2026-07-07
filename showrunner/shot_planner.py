@@ -6,8 +6,8 @@ from . import config
 from .ledger import Ledger
 from .llm import chat_json
 
-SYSTEM = f"""You are a storyboard artist for a text-to-video model.
-Turn the screenplay into exactly {config.TARGET_SHOTS} shots of {config.CLIP_SECONDS}s each.
+SYSTEM_TMPL = """You are a storyboard artist for a text-to-video model.
+Turn the screenplay into exactly {target} shots of {secs}s each.
 Rules for prompts: begin every prompt with the screenplay's `style` sentence, then the
 character's `visual` descriptor VERBATIM (this is what keeps the character consistent
 across clips), then the shot content. One continuous simple action per shot. No text
@@ -16,6 +16,8 @@ Reply ONLY with JSON:
 {{"shots": [{{"id": int, "scene_id": int, "prompt": str, "subtitle": str}}]}}"""
 
 
-def plan_shots(screenplay: dict, ledger: Ledger) -> dict:
-    return chat_json("shot_plan", config.MODEL_PLANNER, SYSTEM,
+def plan_shots(screenplay: dict, ledger: Ledger,
+               target: int = config.TARGET_SHOTS) -> dict:
+    system = SYSTEM_TMPL.format(target=target, secs=config.CLIP_SECONDS)
+    return chat_json("shot_plan", config.MODEL_PLANNER, system,
                      json.dumps(screenplay, ensure_ascii=False), ledger, thinking=False)

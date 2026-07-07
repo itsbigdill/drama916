@@ -26,7 +26,8 @@ lock = threading.Lock()
 approve_event = threading.Event()
 
 
-def start_run(logline: str, dry_run: bool, vertical: bool):
+def start_run(logline: str, dry_run: bool, vertical: bool,
+              shots_target: int = 12, genre: str = ""):
     def cb(stage: str, detail: str):
         with lock:
             if stage == "approve":
@@ -57,7 +58,8 @@ def start_run(logline: str, dry_run: bool, vertical: bool):
     def job():
         try:
             pipeline.run(logline, dry_run=dry_run, cb=cb, vertical=vertical,
-                         approval=approve_event.wait)
+                         approval=approve_event.wait,
+                         shots_target=shots_target, genre=genre)
         except BaseException as e:  # SystemExit included (budget cap)
             with lock:
                 state.update(error=str(e), running=False, stage="error")
@@ -101,6 +103,10 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
              box-shadow: inset 0 3px 14px rgba(0,0,0,.55), inset 0 -1px 0 rgba(255,255,255,.05); }
   textarea::placeholder { color: rgba(244,240,255,.3); }
   .row { display: flex; gap: 12px; align-items: stretch; margin-top: 16px; }
+  .seg { display: inline-flex; gap: 0; border-radius: 14px; overflow: hidden;
+         border: 1px solid rgba(255,255,255,.12); }
+  .seg .chip { border: 0; border-radius: 0; padding: 10px 15px; }
+  .seg .chip + .chip { border-left: 1px solid rgba(255,255,255,.1); }
   .chip { border: 1px solid rgba(255,255,255,.12); cursor: pointer; background: transparent;
           color: rgba(244,240,255,.4); border-radius: 14px; padding: 0 16px;
           font-family: "JetBrains Mono", monospace; font-size: 13px; font-weight: 700; }
@@ -174,9 +180,12 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
 
 <div class="glass">
   <textarea id="log" placeholder="One line. A whole film."></textarea>
+  <div class="row" style="flex-wrap:wrap">
+    <span class="seg" data-k="fmt"><button class="chip on" data-v="916">9:16</button><button class="chip" data-v="169">16:9</button></span>
+    <span class="seg" data-k="len"><button class="chip" data-v="6">30s</button><button class="chip on" data-v="12">60s</button></span>
+    <span class="seg" data-k="genre"><button class="chip" data-v="drama">Drama</button><button class="chip" data-v="comedy">Comedy</button><button class="chip" data-v="noir">Noir</button><button class="chip" data-v="ad">Ad</button></span>
+  </div>
   <div class="row">
-    <button id="vert" class="chip on">9:16</button>
-    <button id="dry" class="chip">$0</button>
     <button id="go" class="go">Action</button>
   </div>
 
@@ -217,7 +226,20 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
 <script>
 var $ = function (id) { return document.getElementById(id); };
 var ORDER = ["script", "board", "critic", "film", "cut"];
-var dry = false, vert = true, t0 = null;
+var t0 = null;
+var opts = { fmt: "916", len: "12", genre: "" };
+document.querySelectorAll(".seg").forEach(function (seg) {
+  var k = seg.dataset.k;
+  seg.querySelectorAll(".chip").forEach(function (ch) {
+    ch.onclick = function () {
+      var was = ch.classList.contains("on");
+      seg.querySelectorAll(".chip").forEach(function (x) { x.classList.remove("on"); });
+      if (k === "genre" && was) { opts.genre = ""; return; }  // genre is deselectable
+      ch.classList.add("on");
+      opts[k] = ch.dataset.v;
+    };
+  });
+});
 
 // rotating idea placeholder
 var IDEAS = [
@@ -243,7 +265,8 @@ $("go").onclick = function () {
   if (!logline) { $("log").focus(); return; }
   $("go").disabled = true; $("log").disabled = true; t0 = Date.now();
   fetch("/run", { method: "POST", headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ logline: logline, dry_run: dry, vertical: vert }) })
+                  body: JSON.stringify({ logline: logline, vertical: opts.fmt === "916",
+                                         shots: +opts.len, genre: opts.genre }) })
     .then(function () { $("steps").style.display = "flex"; $("feed").style.display = "block"; poll(); });
 };
 
@@ -294,7 +317,7 @@ function poll() {
       $("player").src = s.video;
       $("dl").href = s.video;
       $("title").textContent = s.title || "";
-      $("meta").textContent = (dry ? "$0 test render" : "cost $" + (+s.cost).toFixed(2));
+      $("meta").textContent = "cost $" + (+s.cost).toFixed(2);
       $("cap").textContent = s.caption || "";
       $("copycap").onclick = function () {
         navigator.clipboard.writeText(s.caption || "");
@@ -375,7 +398,10 @@ class H(BaseHTTPRequestHandler):
         logline = str(body.get("logline", "")).strip()
         if not logline:
             return self._json(400, {"error": "logline required"})
-        start_run(logline, bool(body.get("dry_run")), bool(body.get("vertical")))
+        shots = 6 if int(body.get("shots", 12)) <= 6 else 12
+        genre = str(body.get("genre", ""))[:24]
+        start_run(logline, bool(body.get("dry_run")), bool(body.get("vertical")),
+                  shots_target=shots, genre=genre)
         self._json(200, {"ok": True})
 
 
