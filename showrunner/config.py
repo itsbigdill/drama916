@@ -28,5 +28,6 @@ MAX_CRITIC_ROUNDS = 3
 TARGET_SHOTS = 12                 # ~60s film at 5s/clip
 CONCURRENT_CLIPS = 4              # HappyHorse ~3min/clip; parallel keeps wall-clock sane
 MAX_RESHOOTS = 3                  # dailies QC may reshoot at most this many takes per film
+DAILIES_QC = False                # optional post-shoot VL review; off = faster pipeline
 
 RUNS_DIR = "runs"

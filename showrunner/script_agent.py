@@ -10,10 +10,11 @@ Constraints: 3-act arc, at most 4 scenes, one or two characters, strong visual
 storytelling (a video model will render it — no complex physics, no text in frame,
 no fast camera moves). Reply ONLY with JSON:
 {"title": str, "logline": str, "style": str,  # one reusable visual style sentence
+ "caption": str,  # TikTok caption: one hook line under 100 chars, then 4 hashtags
  "characters": [{"name": str, "visual": str}],  # stable visual descriptor, reused verbatim in every shot
  "scenes": [{"id": int, "setting": str, "action": str, "subtitle": str, "mood": str}]}"""
 
 
-def write_screenplay(logline: str, ledger: Ledger, on_delta=None) -> dict:
+def write_screenplay(logline: str, ledger: Ledger, on_delta=None, thinking: bool = True) -> dict:
     return chat_json("screenplay", config.MODEL_WRITER, SYSTEM,
-                     f"Logline: {logline}", ledger, on_delta=on_delta)
+                     f"Logline: {logline}", ledger, on_delta=on_delta, thinking=thinking)

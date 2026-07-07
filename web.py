@@ -305,7 +305,6 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
     <div class="step" data-s="critic"><div class="d"></div>CRITIC</div>
     <div class="step" data-s="stills"><div class="d"></div>STILLS</div>
     <div class="step" data-s="film"><div class="d"></div>FILM</div>
-    <div class="step" data-s="dailies"><div class="d"></div>DAILIES</div>
     <div class="step" data-s="cut"><div class="d"></div>CUT</div>
   </div>
   <div id="feed"></div>
@@ -340,7 +339,7 @@ var $ = function (id) { return document.getElementById(id); };
 function startOver() {
   fetch("/reset", { method: "POST" }).finally(function () { location.reload(); });
 }
-var ORDER = ["script", "board", "critic", "stills", "film", "dailies", "cut"];
+var ORDER = ["script", "board", "critic", "stills", "film", "cut"];
 var t0 = null;
 
 function enterRun() {
@@ -409,7 +408,6 @@ var MOCKS = {
   critic:  ["The critic adjusts their glasses…", "Red ink everywhere…"],
   stills:  ["Casting is arguing about the lead…", "Painting frame by frame…", "Mixing the palette…"],
   film:    ["Quiet on set…", "Rolling…", "Craft services ran out of coffee…"],
-  dailies: ["Screening the dailies…", "The director squints at shot three…"],
   cut:     ["Splicing the reels…", "Syncing subtitles…"]
 };
 var mockIx = 0, mockStage = "script";
@@ -482,10 +480,6 @@ function renderLive(s) {
     h = '<div class="llab">storyboard</div><div class="lthumbs">' + L.stills.map(function (st) {
       return '<img src="/video?p=' + encodeURIComponent(st.img) + '">';
     }).join("") + "</div>";
-  } else if (s.stage === "dailies" && L.dailies && L.dailies.length) {
-    h = '<div class="llab">dailies</div>' + L.dailies.map(function (d) {
-      return '<div class="lline">shot ' + d.id + " " + (d.ok ? "\u2713" : "\u2717 " + (d.reason || "").replace(/</g, "&lt;") + " \u2192 reshoot") + '</div>';
-    }).join("");
   }
   el.innerHTML = h;
 }
@@ -497,9 +491,7 @@ function feedRows(s) {
   if (L.critic) rows.push(["CRITIC", (L.critic.score != null ? "score " + L.critic.score + "/10" : "approved")
         + " · " + L.critic.rounds + " round" + (L.critic.rounds > 1 ? "s" : "")
         + (L.critic.shots ? " · " + L.critic.shots + " shots final" : "")]);
-  if (L.dailies) rows.push(["DAILIES", L.dailies.reshot
-        ? L.dailies.reshot + " take" + (L.dailies.reshot > 1 ? "s" : "") + " reshot — " + (L.dailies.last_reason || "")
-        : "all " + L.dailies.approved + " takes approved"]);
+
   $("feed").innerHTML = rows.map(function (r) {
     return '<div class="frow"><span class="fl">' + r[0] + ' ✓</span><span class="fv">' + r[1] + "</span></div>";
   }).join("");

@@ -46,21 +46,19 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
         brief += f"\nGenre: {genre}."
     if cast:
         brief += f"\nCasting rule: ALL characters are {cast}; write their visual descriptors accordingly."
+    fast = shots_target <= 6  # 15s/30s: skip deep thinking, one critic round
     def script_delta(text_so_far: str, kind: str):
         notify("script_live", json.dumps({"kind": kind, "tail": text_so_far[-700:]}))
-    screenplay = write_screenplay(brief, ledger, on_delta=script_delta)
+    screenplay = write_screenplay(brief, ledger, on_delta=script_delta,
+                                  thinking=not fast)
     save("screenplay.json", screenplay)
     console.print(f"[bold]{screenplay['title']}[/] — {len(screenplay['scenes'])} scenes")
     notify("script", json.dumps({"title": screenplay.get("title", ""),
                                  "scenes": len(screenplay.get("scenes", []))}))
 
-    # a TikTok-ready caption, written while the board is being planned (cheap, flash)
-    from .llm import chat
-    caption = chat("caption", config.MODEL_CHEAP,
-                   "You write TikTok captions. Reply with ONLY the caption text: "
-                   "one hook line under 100 chars, then 4 relevant hashtags.",
-                   f"Short film: {screenplay.get('title')} — {screenplay.get('logline', logline)}",
-                   ledger, thinking=False).strip()
+    # caption is part of the screenplay call now — zero extra latency
+    caption = str(screenplay.get("caption") or
+                  f"{screenplay.get('title', 'A short film')} 🎬 #shortfilm #ai").strip()
     (run_dir / "caption.txt").write_text(caption)
 
     console.rule("2/5 Shot plan")
@@ -76,7 +74,8 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
         notify("critic_live", json.dumps({"round": rnd, "score": review.get("score"),
                                           "fixes": fixes,
                                           "shots": len(review.get("revised_shots", []) or [])}))
-    shots, critique_history = refine(shots, ledger, progress=critic_round)
+    shots, critique_history = refine(shots, ledger, progress=critic_round,
+                                     max_rounds=1 if fast else 2)
     save("shots_final.json", shots)
     save("critique_rounds.json", critique_history)
     n = len(shots["shots"])
@@ -151,10 +150,9 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
     with ThreadPoolExecutor(max_workers=config.CONCURRENT_CLIPS) as pool:
         clip_paths = list(pool.map(make, shot_list))
 
-    # Dailies: the agent screens every take and reshoots the broken ones.
-    # Skipped on dry runs (placeholder cards have nothing to review).
-    if dry_run:
-        notify("dailies", json.dumps({"approved": len(shot_list), "reshot": 0}))
+    # Dailies QC is optional (config.DAILIES_QC) — off by default for speed.
+    if dry_run or not config.DAILIES_QC:
+        pass
     else:
         from .dailies import review_take
         console.rule("Dailies review")
