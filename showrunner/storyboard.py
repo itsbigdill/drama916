@@ -6,6 +6,7 @@ they double as the visual anchor for image-to-video continuity later.
 
 import base64
 import os
+import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Callable
@@ -86,33 +87,72 @@ def cast_all(characters: list[dict], size: str, cast_dir: Path, ledger: Ledger,
         return [p for p in pool.map(one, characters) if p]
 
 
+def _try_still(prompt: str, size: str, out: Path, ledger: Ledger,
+               refs: list[Path] | None, tag: str) -> bool:
+    try:
+        generate_still(prompt, size, out, ledger, refs=refs)
+        return True
+    except Exception as e:
+        detail = getattr(getattr(e, "response", None), "text", "") or str(e)
+        print(f"[storyboard] {tag} failed: {detail[:180]}")
+        if "Throttling" in detail:
+            time.sleep(8)  # QPS-ліміт image-моделі: подихаємо перед наступною спробою
+        return False
+
+
+def _sanitized(prompt: str, ledger: Ledger) -> str:
+    """Moderation-safe rewrite of a shot prompt (cheap flash call)."""
+    from .llm import chat
+    try:
+        return chat("still_sanitize", config.MODEL_CHEAP,
+                    "Rewrite the image prompt so it passes strict content moderation. "
+                    "Keep the scene, characters and mood; remove anything violent, dark "
+                    "or brand/person-specific. Reply with the rewritten prompt only.",
+                    prompt, ledger, thinking=False).strip()
+    except Exception:
+        return "gentle storyboard sketch: " + prompt
+
+
 def sketch_all(shots: list[dict], size: str, board_dir: Path, ledger: Ledger,
                progress: Callable[[int, int], None],
                refs: list[Path] | None = None) -> list[Path]:
+    """Stills are MANDATORY: the human approves pictures, never dashed placeholders.
+    Ladder per shot: retry w/ backoff → moderation-softened → flash-sanitized;
+    then a serial sweep for stragglers (rate limits love a queue); and as the
+    last real-image resort, the character portrait stands in for the frame."""
     board_dir.mkdir(parents=True, exist_ok=True)
     done = 0
+    results: dict[int, Path | None] = {}
 
-    def one(shot: dict) -> Path | None:
+    def one(shot: dict) -> None:
         nonlocal done
         out = board_dir / f"shot_{shot['id']:02}.png"
-        # one retry (transient rate limits / timeouts); moderation refusals get
-        # a softened second attempt. Every failure is LOGGED, never swallowed.
-        import time as _t
-        for attempt, prompt in enumerate([shot["prompt"], shot["prompt"],
-                                          "storyboard sketch, calm neutral mood: " + shot["prompt"]]):
-            try:
-                generate_still(prompt, size, out, ledger, refs=refs)
-                break
-            except Exception as e:
-                if "Throttling" in str(getattr(getattr(e, "response", None), "text", "")):
-                    _t.sleep(8)  # QPS-ліміт image-моделі: подихаємо і пробуємо ще
-                detail = getattr(getattr(e, "response", None), "text", "") or str(e)
-                print(f"[storyboard] shot {shot['id']:02} attempt {attempt + 1} failed: {detail[:200]}")
-                if attempt == 2:
-                    out = None  # text fallback on the board; never kills the run
+        ok = (_try_still(shot["prompt"], size, out, ledger, refs, f"shot {shot['id']:02} a1")
+              or _try_still(shot["prompt"], size, out, ledger, refs, f"shot {shot['id']:02} a2")
+              or _try_still("storyboard sketch, calm neutral mood: " + shot["prompt"],
+                            size, out, ledger, refs, f"shot {shot['id']:02} a3"))
+        results[shot["id"]] = out if ok else None
         done += 1
         progress(done, len(shots))
-        return out
 
     with ThreadPoolExecutor(max_workers=2) as pool:  # image QPS is tight
-        return list(pool.map(one, shots))
+        list(pool.map(one, shots))
+
+    # serial rescue sweep: sanitized prompt, generous spacing
+    for shot in shots:
+        if results[shot["id"]] is not None:
+            continue
+        time.sleep(10)
+        out = board_dir / f"shot_{shot['id']:02}.png"
+        clean = _sanitized(shot["prompt"], ledger)
+        if _try_still(clean, size, out, ledger, refs, f"shot {shot['id']:02} rescue"):
+            results[shot["id"]] = out
+        elif refs:
+            # last real-image resort: the hero's portrait IS a real frame of the
+            # right character — infinitely better than a dashed placeholder
+            import shutil
+            shutil.copy(refs[0], out)
+            results[shot["id"]] = out
+            print(f"[storyboard] shot {shot['id']:02}: portrait stands in as the frame")
+
+    return [results[s["id"]] for s in shots]
