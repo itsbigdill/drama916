@@ -255,6 +255,7 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
   <div class="row">
     <button id="go" class="go">Action</button>
   </div>
+  <div id="formErr" style="display:none;margin-top:12px;font-size:14px;color:#E5484D"></div>
   </div><!-- /formPane -->
 
   <div id="runPane">
@@ -304,6 +305,20 @@ function startOver() {
 }
 var ORDER = ["script", "board", "critic", "film", "dailies", "cut"];
 var t0 = null;
+
+function enterRun() {
+  document.getElementById("panes").classList.add("running");
+  $("steps").style.display = "flex"; $("feed").style.display = "block";
+  $("beacon").style.display = "block"; $("mock").style.display = "block";
+  if (!t0) t0 = Date.now();
+  poll();
+}
+// рефреш не втрачає роботу: сервер пам'ятає ран — повертаємось у нього
+window.addEventListener("load", function () {
+  fetch("/status").then(function (r) { return r.json(); }).then(function (s) {
+    if (s.stage && s.stage !== "idle") enterRun();
+  });
+});
 var opts = { fmt: "916", len: "12", genre: "drama", cast: "realistic human characters" };
 document.querySelectorAll(".seg").forEach(function (seg) {
   var k = seg.dataset.k;
@@ -502,7 +517,9 @@ function poll() {
       return;
     }
     if (s.stage === "error") {
-      $("err").style.display = "block"; $("err").textContent = s.error || "failed";
+      document.getElementById("panes").classList.remove("running");
+      $("formErr").style.display = "block";
+      $("formErr").textContent = s.error || "failed";
       $("go").disabled = false; $("log").disabled = false;
       return;
     }
