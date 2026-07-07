@@ -96,7 +96,7 @@ def _try_still(prompt: str, size: str, out: Path, ledger: Ledger,
         detail = getattr(getattr(e, "response", None), "text", "") or str(e)
         print(f"[storyboard] {tag} failed: {detail[:180]}")
         if "Throttling" in detail:
-            time.sleep(8)  # QPS-ліміт image-моделі: подихаємо перед наступною спробою
+            time.sleep(15)  # квота хвилинна — коротка пауза її не рятує
         return False
 
 
@@ -138,24 +138,32 @@ def sketch_all(shots: list[dict], size: str, board_dir: Path, ledger: Ledger,
     with ThreadPoolExecutor(max_workers=2) as pool:  # image QPS is tight
         list(pool.map(one, shots))
 
-    # serial rescue sweep: sanitized prompt, generous spacing
+    # serial rescue sweeps: sanitized prompt, generous spacing. Two rounds —
+    # the per-minute image quota needs real time to refill; settling for a
+    # portrait stand-in after one hasty pass produced studio-grey frames.
+    for round_no in (1, 2):
+        for shot in shots:
+            if results[shot["id"]] is not None:
+                continue
+            progress(done, len(shots), shot["id"], "rescue")
+            time.sleep(20)
+            out = board_dir / f"shot_{shot['id']:02}.png"
+            clean = _sanitized(shot["prompt"], ledger)
+            if _try_still(clean, size, out, ledger, refs,
+                          f"shot {shot['id']:02} rescue r{round_no}"):
+                results[shot["id"]] = out
+                progress(done, len(shots), shot["id"], str(out))
+
     for shot in shots:
-        if results[shot["id"]] is not None:
+        if results[shot["id"]] is not None or not refs:
             continue
-        progress(done, len(shots), shot["id"], "rescue")
-        time.sleep(5)
+        # last real-image resort: the hero's portrait IS a real frame of the
+        # right character — infinitely better than a dashed placeholder
+        import shutil
         out = board_dir / f"shot_{shot['id']:02}.png"
-        clean = _sanitized(shot["prompt"], ledger)
-        if _try_still(clean, size, out, ledger, refs, f"shot {shot['id']:02} rescue"):
-            results[shot["id"]] = out
-            progress(done, len(shots), shot["id"], str(out))
-        elif refs:
-            # last real-image resort: the hero's portrait IS a real frame of the
-            # right character — infinitely better than a dashed placeholder
-            import shutil
-            shutil.copy(refs[0], out)
-            results[shot["id"]] = out
-            progress(done, len(shots), shot["id"], str(out))
-            print(f"[storyboard] shot {shot['id']:02}: portrait stands in as the frame")
+        shutil.copy(refs[0], out)
+        results[shot["id"]] = out
+        progress(done, len(shots), shot["id"], str(out))
+        print(f"[storyboard] shot {shot['id']:02}: portrait stands in as the frame")
 
     return [results[s["id"]] for s in shots]
