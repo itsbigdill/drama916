@@ -95,7 +95,7 @@ def start_run(logline: str, dry_run: bool, vertical: bool,
     threading.Thread(target=job, daemon=True).start()
 
 
-PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
+PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -346,7 +346,7 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
   </div><!-- /runPane -->
 </div><!-- /panes -->
 
-<div class="foot"><a href="https://www.qwencloud.com">Qwen + HappyHorse on Alibaba Cloud</a></div>
+<div class="foot"><a href="https://www.qwencloud.com">Qwen + HappyHorse on Alibaba Cloud</a> · <span id="build">BUILD_STAMP</span></div>
 
 <script>
 var $ = function (id) { return document.getElementById(id); };
@@ -546,6 +546,7 @@ function showBoard(s) {
 
 function poll() {
   fetch("/status").then(function (r) { return r.json(); }).then(function (s) {
+   try {
     var isApprove = s.stage === "approve";
     var idx = isApprove ? 4 : ORDER.indexOf(s.stage);
     document.querySelectorAll(".step").forEach(function (el, i) {
@@ -595,9 +596,14 @@ function poll() {
       return;
     }
     setTimeout(poll, 1200);
-  });
+   } catch (e) { console.error("poll render:", e); setTimeout(poll, 2000); }
+  }).catch(function (e) { console.error("poll fetch:", e); setTimeout(poll, 2000); });
 }
 </script>"""
+
+
+import time as _time
+PAGE = PAGE_TEMPLATE.replace("BUILD_STAMP", "b" + _time.strftime("%H%M"))
 
 
 class H(BaseHTTPRequestHandler):
