@@ -94,22 +94,29 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
            backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
            box-shadow: 0 24px 70px rgba(90,70,200,.12), 0 3px 10px rgba(34,33,58,.05),
                        inset 0 1px 0 #FFFFFF; }
-  textarea { width: 100%; border: 1px solid #ECEAF7; resize: none; background: #FBFBFE;
-             border-radius: 16px; padding: 17px 19px; font-size: 17px; line-height: 1.55;
-             font-family: inherit; color: inherit; outline: none; min-height: 96px;
-             transition: border-color .2s, box-shadow .2s; }
+  textarea { width: 100%; border: 1px solid transparent; resize: none; background: #FDFDFF;
+             border-radius: 18px; padding: 20px 22px; font-size: 19px; line-height: 1.55;
+             font-family: inherit; color: inherit; outline: none; min-height: 116px;
+             box-shadow: inset 0 0 0 1px #F0EEF9;
+             transition: border-color .2s, box-shadow .25s; }
   textarea:focus { border-color: #B9AFFF; box-shadow: 0 0 0 4px rgba(108,92,231,.12); }
   textarea::placeholder { color: #A9A6C6; }
   textarea.invalid { border-color: #E5484D; box-shadow: 0 0 0 4px rgba(229,72,77,.14);
                      animation: shake .35s ease; }
   @keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
-  .row { display: flex; gap: 10px; align-items: stretch; margin-top: 14px; }
+  .row { display: flex; gap: 10px; align-items: stretch; margin-top: 20px; }
+  .opts { display: flex; flex-wrap: wrap; gap: 14px 22px; margin-top: 18px; }
+  .opt { display: flex; flex-direction: column; gap: 6px; }
+  .ol { font-family: "JetBrains Mono", monospace; font-size: 10px; font-weight: 700;
+        letter-spacing: .14em; text-transform: uppercase; color: #B4B1CF; padding-left: 3px; }
   .seg { display: inline-flex; gap: 0; border-radius: 12px; overflow: hidden;
          border: 1px solid #E7E5F3; background: #F4F3FA; }
-  .seg .chip { border: 0; border-radius: 0; padding: 10px 15px; }
+  .seg .chip { border: 0; border-radius: 0; padding: 8px 13px; }
   .seg .chip + .chip { border-left: 1px solid #E7E5F3; }
   .chip { cursor: pointer; background: transparent; color: #8B88AC;
-          font-family: "JetBrains Mono", monospace; font-size: 13px; font-weight: 700; }
+          font-family: "JetBrains Mono", monospace; font-size: 12.5px; font-weight: 700;
+          transition: background .18s, color .18s, transform .1s; }
+  .chip:active { transform: scale(.94); }
   .chip.on { background: #ECE9FF; color: #5646D6; box-shadow: inset 0 0 0 1px #C9BFFF; }
   .go { flex: 1; border: 0; border-radius: 16px; padding: 17px; cursor: pointer;
         background: linear-gradient(180deg, #7A5CFF, #5B45E0);
@@ -117,7 +124,8 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
         font-size: 15px; letter-spacing: .12em; text-transform: uppercase;
         box-shadow: 0 16px 36px rgba(108,92,231,.35), inset 0 1px 0 rgba(255,255,255,.35);
         transition: transform .15s ease; }
-  .go:hover { transform: translateY(-2px); }
+  .go:hover { transform: translateY(-2px); filter: brightness(1.06); }
+  .go:active { transform: translateY(0); filter: brightness(.97); }
   .go:disabled { opacity: .4; box-shadow: none; transform: none; }
 
   #steps { display: none; justify-content: space-between; margin: 26px 4px 0; }
