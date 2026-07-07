@@ -651,7 +651,8 @@ class H(BaseHTTPRequestHandler):
                 state["run_id"] += 1
                 state.update(running=False, stage="idle", detail="", video=None,
                              cost=None, error=None, title="", caption="", log={},
-                             board=None)
+                             board=None,
+                             live={"script": None, "stills": [], "critic": [], "dailies": []})
             return self._json(200, {"ok": True})
         if self.path != "/run":
             return self._json(404, {"error": "not found"})
