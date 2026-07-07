@@ -512,17 +512,49 @@ function renderLive(s) {
   el.innerHTML = h;
 }
 
+function esc2(x) { return String(x == null ? "" : x).replace(/</g, "&lt;"); }
+function blk(label, head, body, open) {
+  return '<details class="fblk"' + (open ? " open" : "") + '><summary><span class="fl">' +
+         label + ' \u2713</span><span class="fv">' + head + '</span></summary>' +
+         (body ? '<div class="fbody">' + body + '</div>' : "") + '</details>';
+}
 function feedRows(s) {
-  var L = s.log || {}, rows = [];
-  if (L.script) rows.push(["SCRIPT", "<b>“" + (L.script.title || "") + "”</b> · " + L.script.scenes + " scenes"]);
-  if (L.board) rows.push(["BOARD", L.board.shots + " shots planned"]);
-  if (L.critic) rows.push(["CRITIC", (L.critic.score != null ? "score " + L.critic.score + "/10" : "approved")
-        + " · " + L.critic.rounds + " round" + (L.critic.rounds > 1 ? "s" : "")
-        + (L.critic.shots ? " · " + L.critic.shots + " shots final" : "")]);
-
-  $("feed").innerHTML = rows.map(function (r) {
-    return '<div class="frow"><span class="fl">' + r[0] + ' ✓</span><span class="fv">' + r[1] + "</span></div>";
-  }).join("");
+  var L = s.log || {}, live = s.live || {}, h = "";
+  if (L.script) {
+    var scenes = Array.isArray(L.script.scenes) ? L.script.scenes : [];
+    var sbody = scenes.map(function (sc) {
+      return '<div class="scene"><span class="sn">' + esc2(sc.id) + '</span>' +
+             '<span class="sset">' + esc2(sc.setting) + '</span> \u2014 ' + esc2(sc.action) +
+             (sc.subtitle ? ' <span class="ssub">\u201C' + esc2(sc.subtitle) + '\u201D</span>' : "") + '</div>';
+    }).join("");
+    h += blk("SCRIPT", "<b>\u201C" + esc2(L.script.title) + "\u201D</b> \u00B7 " +
+             (scenes.length || L.script.scenes) + " scenes", sbody,
+             s.stage === "board" || s.stage === "critic");
+  }
+  if (L.board) {
+    var shots = Array.isArray(L.board.shots) ? L.board.shots : [];
+    var bbody = shots.map(function (sh) {
+      return '<div class="scene"><span class="sn">' + String(sh.id).padStart(2, "0") + '</span>' +
+             esc2(sh.prompt) + (sh.subtitle ? ' <span class="ssub">\u201C' + esc2(sh.subtitle) + '\u201D</span>' : "") + '</div>';
+    }).join("");
+    h += blk("BOARD", (shots.length || L.board.shots) + " shots planned", bbody, s.stage === "critic");
+  }
+  if (L.critic) {
+    var cbody = (L.critic.verdict ? '<div class="fnote">' + esc2(L.critic.verdict) + '</div>' : "") +
+                (L.critic.notes || []).map(function (n) { return '<div class="fnote">\u2717 ' + esc2(n) + '</div>'; }).join("");
+    h += blk("CRITIC", (L.critic.score != null ? "score " + L.critic.score + "/10" : "approved") +
+             " \u00B7 " + L.critic.rounds + " round" + (L.critic.rounds > 1 ? "s" : "") +
+             (L.critic.shots ? " \u00B7 " + L.critic.shots + " shots final" : ""), cbody,
+             s.stage === "stills" || s.stage === "approve");
+  }
+  if (live.stills && live.stills.length && s.stage !== "stills") {
+    h += blk("STILLS", live.stills.length + " frames painted",
+             '<div class="fthumbs">' + live.stills.map(function (st) {
+               return '<img src="/video?p=' + encodeURIComponent(st.img) + '">';
+             }).join("") + "</div>", s.stage === "approve");
+  }
+  if (s.stage === "cut" || s.stage === "done") h += blk("FILM", "all shots rendered", "", false);
+  $("feed").innerHTML = h;
 }
 
 function showBoard(s) {
