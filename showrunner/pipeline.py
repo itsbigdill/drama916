@@ -54,7 +54,11 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
     save("screenplay.json", screenplay)
     console.print(f"[bold]{screenplay['title']}[/] — {len(screenplay['scenes'])} scenes")
     notify("script", json.dumps({"title": screenplay.get("title", ""),
-                                 "scenes": len(screenplay.get("scenes", []))}))
+                                 "scenes": [{"id": sc.get("id"),
+                                             "setting": str(sc.get("setting", ""))[:60],
+                                             "action": str(sc.get("action", ""))[:160],
+                                             "subtitle": str(sc.get("subtitle", ""))[:80]}
+                                            for sc in screenplay.get("scenes", [])]}))
 
     # caption is part of the screenplay call now — zero extra latency
     caption = str(screenplay.get("caption") or
@@ -65,7 +69,10 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
     notify("board", "")
     shots = plan_shots(screenplay, ledger, target=shots_target)
     save("shots_draft.json", shots)
-    notify("board", json.dumps({"shots": len(shots.get("shots", []))}))
+    notify("board", json.dumps({"shots": [{"id": s.get("id"),
+                                           "subtitle": str(s.get("subtitle", ""))[:70],
+                                           "prompt": str(s.get("prompt", ""))[:110]}
+                                          for s in shots.get("shots", [])]}))
 
     console.rule("3/5 Critic loop (text-only, cheap)")
     notify("critic", "")
@@ -81,8 +88,12 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
     n = len(shots["shots"])
     console.print(f"approved after {len(critique_history)} round(s), {n} shots")
     last_score = critique_history[-1].get("score") if critique_history else None
+    notes = []
+    for rev in critique_history:
+        notes += [str(f.get("problem", ""))[:80] for f in rev.get("fixes", [])]
     notify("critic", json.dumps({"rounds": len(critique_history), "score": last_score,
-                                 "shots": n}))
+                                 "shots": n, "notes": notes[:5],
+                                 "verdict": str(critique_history[-1].get("verdict", ""))[:140] if critique_history else ""}))
 
     estimate = n * config.COST_PER_CLIP_USD
     if not dry_run and estimate > config.MAX_BUDGET_USD:

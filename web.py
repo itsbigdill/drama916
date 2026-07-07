@@ -103,7 +103,7 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
   * { box-sizing: border-box; }
   body { margin: 0; min-height: 100vh; font: 16px/1.5 -apple-system, system-ui;
          color: #22213A; background: #F7F7FC; display: flex; flex-direction: column;
-         align-items: center; padding: 48px 18px; }
+         align-items: center; padding: 48px 18px; overflow-x: hidden; }
   body::before { content: ""; position: fixed; inset: 0; z-index: -1; background:
     radial-gradient(55% 40% at 12% 5%, rgba(108,92,231,.10), transparent 70%),
     radial-gradient(45% 40% at 90% 12%, rgba(160,140,255,.08), transparent 70%),
@@ -242,12 +242,26 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
                  box-shadow: 0 6px 14px rgba(90,70,200,.16); animation: pop .3s ease; }
   @keyframes pop { 0% { transform: scale(.6); opacity: 0; } }
   #feed { margin-top: 6px; display: none; }
-  .frow { display: flex; gap: 12px; align-items: baseline; padding: 10px 4px;
-          border-top: 1px solid #EDEBF7; }
-  .frow .fl { font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 700;
+  .fblk { border-top: 1px solid #EDEBF7; padding: 4px 0; }
+  .fblk summary { list-style: none; cursor: pointer; display: flex; gap: 12px;
+                  align-items: baseline; padding: 8px 4px; }
+  .fblk summary::-webkit-details-marker { display: none; }
+  .fblk .fl { font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 700;
               letter-spacing: .12em; color: #6C5CE7; flex: 0 0 64px; }
-  .frow .fv { font-size: 14.5px; color: #33314E; }
-  .frow .fv b { font-family: "Unbounded", system-ui; font-weight: 500; font-size: 13.5px; }
+  .fblk .fv { font-size: 14.5px; color: #33314E; }
+  .fblk .fv b { font-family: "Unbounded", system-ui; font-weight: 500; font-size: 13.5px; }
+  .fbody { padding: 2px 4px 10px 76px; }
+  .scene { font-size: 13px; color: #55536E; padding: 5px 0; border-top: 1px dashed #EFEDF8; }
+  .scene:first-child { border-top: 0; }
+  .scene .sn { font-family: "JetBrains Mono", monospace; font-size: 10.5px; font-weight: 700;
+               color: #A08CFF; margin-right: 7px; }
+  .scene .sset { font-weight: 600; color: #454363; }
+  .scene .ssub { color: #8B88AC; font-style: italic; }
+  .fnote { font-family: "JetBrains Mono", monospace; font-size: 11.5px; color: #8B88AC;
+           padding: 3px 0; }
+  .fthumbs { display: flex; gap: 7px; flex-wrap: wrap; padding-top: 4px; }
+  .fthumbs img { width: 52px; height: 74px; object-fit: cover; border-radius: 9px;
+                 box-shadow: 0 6px 14px rgba(90,70,200,.16); }
 
   #cinema { display: none; margin-top: 22px; }
   #cinema video { width: 100%; max-height: 64vh; object-fit: contain; background: #0E0D18;
