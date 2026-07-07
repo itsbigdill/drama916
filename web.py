@@ -583,8 +583,49 @@ $("go").onclick = function () {
     });
 };
 
+// incremental thumbnails: append only NEW frames so existing <img> nodes are
+// never recreated \u2014 no re-fetch, no replayed pop animation, no blinking
+function syncThumbs(el, mode, label, wrapCls, cellWrap, urls) {
+  if (el.dataset.mode !== mode) {
+    el.dataset.mode = mode;
+    el.innerHTML = '<div class="llab">' + label + '</div><div class="' + wrapCls + '"></div>';
+  }
+  var box = el.querySelector("." + wrapCls);
+  if (!box) return;
+  var seen = {};
+  Array.prototype.forEach.call(box.querySelectorAll("img"), function (img) {
+    seen[img.getAttribute("data-key")] = 1;
+  });
+  urls.forEach(function (u) {
+    if (!u || seen[u]) return;
+    var img = document.createElement("img");
+    img.setAttribute("data-key", u);
+    img.decoding = "async";
+    img.src = "/video?p=" + encodeURIComponent(u);
+    if (cellWrap) {
+      var cell = document.createElement("div");
+      cell.className = "gcell";
+      cell.appendChild(img);
+      box.appendChild(cell);
+    } else {
+      box.appendChild(img);
+    }
+  });
+}
 function renderLive(s) {
-  var L = s.live || {}, el = $("live"), h = "";
+  var L = s.live || {}, el = $("live");
+  if (s.stage === "stills" && L.stills && L.stills.length) {
+    syncThumbs(el, "stills", "storyboard", "lthumbs", false,
+               L.stills.map(function (st) { return st.img; }));
+    return;
+  }
+  if ((s.stage === "film" || s.stage === "cut") && s.board &&
+      (s.board.shots || []).some(function (sh) { return sh.img; })) {
+    syncThumbs(el, "grid-" + s.stage, s.stage === "cut" ? "assembling" : "filming",
+               "gwrap", true, s.board.shots.map(function (sh) { return sh.img; }));
+    return;
+  }
+  var h = "";
   if (s.stage === "script" && L.script && L.script.tail) {
     h = '<div class="llab">writer \u00B7 ' + (L.script.kind === "thinking" ? "thinking" : "writing") + '</div>' +
         '<div class="lcon' + (L.script.kind === "thinking" ? " dim" : "") + '">' +
@@ -594,17 +635,8 @@ function renderLive(s) {
       return '<div class="lline"><b>R' + r.round + " \u00B7 " + (r.score != null ? r.score + "/10" : "\u2014") + '</b>' +
              (r.fixes && r.fixes.length ? " \u2014 " + r.fixes.join("; ").replace(/</g, "&lt;") : " \u2014 approved") + '</div>';
     }).join("");
-  } else if ((s.stage === "film" || s.stage === "cut") && s.board &&
-             (s.board.shots || []).some(function (sh) { return sh.img; })) {
-    h = '<div class="llab">' + (s.stage === "cut" ? "assembling" : "filming") + '</div>' +
-        '<div class="gwrap">' + s.board.shots.map(function (sh) {
-          return sh.img ? '<div class="gcell"><img src="/video?p=' + encodeURIComponent(sh.img) + '"></div>' : "";
-        }).join("") + "</div>";
-  } else if (s.stage === "stills" && L.stills && L.stills.length) {
-    h = '<div class="llab">storyboard</div><div class="lthumbs">' + L.stills.map(function (st) {
-      return '<img src="/video?p=' + encodeURIComponent(st.img) + '">';
-    }).join("") + "</div>";
   }
+  el.dataset.mode = "text";
   el.innerHTML = h;
 }
 
