@@ -112,6 +112,9 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
             notify("stills", f"0/{len(shot_list)}")
             board_dir = run_dir / "board"
             def still_done(d, n, sid=None, path=""):
+                if path == "rescue":
+                    notify("stills", f"retrying shot {sid}")
+                    return
                 notify("stills", f"{d}/{n}")
                 if path:
                     notify("still_live", json.dumps({"id": sid, "img": path}))

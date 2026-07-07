@@ -142,6 +142,7 @@ def sketch_all(shots: list[dict], size: str, board_dir: Path, ledger: Ledger,
     for shot in shots:
         if results[shot["id"]] is not None:
             continue
+        progress(done, len(shots), shot["id"], "rescue")
         time.sleep(10)
         out = board_dir / f"shot_{shot['id']:02}.png"
         clean = _sanitized(shot["prompt"], ledger)

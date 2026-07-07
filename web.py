@@ -303,6 +303,7 @@ PAGE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
     <div class="step" data-s="script"><div class="d"></div>SCRIPT</div>
     <div class="step" data-s="board"><div class="d"></div>BOARD</div>
     <div class="step" data-s="critic"><div class="d"></div>CRITIC</div>
+    <div class="step" data-s="stills"><div class="d"></div>STILLS</div>
     <div class="step" data-s="film"><div class="d"></div>FILM</div>
     <div class="step" data-s="dailies"><div class="d"></div>DAILIES</div>
     <div class="step" data-s="cut"><div class="d"></div>CUT</div>
@@ -339,7 +340,7 @@ var $ = function (id) { return document.getElementById(id); };
 function startOver() {
   fetch("/reset", { method: "POST" }).finally(function () { location.reload(); });
 }
-var ORDER = ["script", "board", "critic", "film", "dailies", "cut"];
+var ORDER = ["script", "board", "critic", "stills", "film", "dailies", "cut"];
 var t0 = null;
 
 function enterRun() {
@@ -402,19 +403,23 @@ document.querySelectorAll(".trtab").forEach(function (b) {
 loadTrends("today");
 
 // студійні рядки під маяком
-var MOCKS = [
-  "Waking the screenwriter…", "The critic demands a rewrite…",
-  "Casting is arguing about the lead…", "Storyboards taped to the wall…",
-  "Convincing the director it's fine…", "Craft services ran out of coffee…",
-  "Polishing lens no. 4…", "Rendering the dailies reel…",
-  "The editor found a better take…", "Projector warming up…"
-];
-var mockIx = 0;
+var MOCKS = {
+  script:  ["Waking the screenwriter…", "Chasing the third act…", "Sharpening pencils…"],
+  board:   ["Taping storyboards to the wall…", "Counting the shots…"],
+  critic:  ["The critic adjusts their glasses…", "Red ink everywhere…"],
+  stills:  ["Casting is arguing about the lead…", "Painting frame by frame…", "Mixing the palette…"],
+  film:    ["Quiet on set…", "Rolling…", "Craft services ran out of coffee…"],
+  dailies: ["Screening the dailies…", "The director squints at shot three…"],
+  cut:     ["Splicing the reels…", "Syncing subtitles…"]
+};
+var mockIx = 0, mockStage = "script";
+function setMockStage(st) { if (MOCKS[st]) mockStage = st; }
 setInterval(function () {
   var m = $("mock");
   if (m.style.display !== "block") return;
-  mockIx = (mockIx + 1) % MOCKS.length;
-  m.textContent = MOCKS[mockIx];
+  var list = MOCKS[mockStage] || MOCKS.script;
+  mockIx = (mockIx + 1) % list.length;
+  m.textContent = list[mockIx];
 }, 2700);
 
 // rotating idea placeholder
@@ -536,13 +541,13 @@ function showBoard(s) {
 function poll() {
   fetch("/status").then(function (r) { return r.json(); }).then(function (s) {
     var isApprove = s.stage === "approve";
-    var isStills = s.stage === "stills";
-    var idx = (isApprove || isStills) ? 3 : ORDER.indexOf(s.stage);
+    var idx = isApprove ? 4 : ORDER.indexOf(s.stage);
     document.querySelectorAll(".step").forEach(function (el, i) {
       el.className = "step" + (i < idx || s.stage === "done" ? " done"
         : (i === idx && !isApprove) ? " on" : "");
     });
     if (s.title) $("runTitle").textContent = "\u201C" + s.title + "\u201D";
+    setMockStage(s.stage);
     renderLive(s);
     feedRows(s);
     if (isApprove) {
