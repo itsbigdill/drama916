@@ -168,6 +168,18 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</titl
           transition: background .18s, color .18s, transform .1s; }
   .chip:active { transform: scale(.94); }
   .chip.on { background: #ECE9FF; color: #5646D6; box-shadow: inset 0 0 0 1px #C9BFFF; }
+  .sel { position: relative; display: inline-flex; }
+  .sel::after { content: "\2304"; position: absolute; right: 12px; top: 50%;
+                transform: translateY(-58%); pointer-events: none; color: #8B88AC; font-size: 13px; }
+  .sel select { appearance: none; -webkit-appearance: none; cursor: pointer; outline: none;
+                border: 1px solid #E7E5F3; background: #F4F3FA; border-radius: 12px;
+                padding: 8px 34px 8px 14px; color: #55536E;
+                font-family: "JetBrains Mono", monospace; font-size: 12.5px; font-weight: 700;
+                transition: border-color .18s, background .18s; }
+  .sel select:hover { background: #ECE9FF; }
+  .sel select:focus { border-color: #B9AFFF; box-shadow: 0 0 0 4px rgba(108,92,231,.12); }
+  /* an active (non-Auto) choice reads as "on", matching the chips */
+  .sel select.set { color: #5646D6; background: #ECE9FF; border-color: #C9BFFF; }
   .go { flex: 1; border: 0; border-radius: 16px; padding: 14px; cursor: pointer;
         background: linear-gradient(180deg, #7A5CFF, #5B45E0);
         color: #FFFFFF; font-family: "Unbounded", system-ui; font-weight: 800;
@@ -376,8 +388,8 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</titl
   <div class="opts">
     <div class="opt"><span class="ol">Ratio</span><span class="seg" data-k="fmt"><button class="chip on" data-v="916">9:16</button><button class="chip" data-v="169">16:9</button></span></div>
     <div class="opt"><span class="ol">Length</span><span class="seg" data-k="len"><button class="chip" data-v="3">15s</button><button class="chip" data-v="6">30s</button><button class="chip" data-v="9">45s</button><button class="chip on" data-v="12">60s</button></span></div>
-    <div class="opt"><span class="ol">Genre</span><span class="seg" data-k="genre"><button class="chip on" data-v="drama">Drama</button><button class="chip" data-v="comedy">Comedy</button><button class="chip" data-v="noir">Noir</button><button class="chip" data-v="comic book style">Comic</button><button class="chip" data-v="ad">Ad</button></span></div>
-    <div class="opt"><span class="ol">Cast</span><span class="seg" data-k="cast"><button class="chip on" data-v="realistic human characters">Real</button><button class="chip" data-v="anthropomorphic fruit and vegetable characters">Fruits</button><button class="chip" data-v="animal characters">Animals</button><button class="chip" data-v="everyday objects brought to life as characters">Objects</button></span></div>
+    <div class="opt"><span class="ol">Genre</span><span class="sel"><select id="selGenre"><option value="">Auto</option><option value="drama">Drama</option><option value="comedy">Comedy</option><option value="noir">Noir</option><option value="comic book style">Comic</option><option value="advertisement">Ad</option></select></span></div>
+    <div class="opt"><span class="ol">Cast</span><span class="sel"><select id="selCast"><option value="">Auto</option><option value="realistic human characters">Real</option><option value="anthropomorphic fruit and vegetable characters">Fruits</option><option value="animal characters">Animals</option><option value="everyday objects brought to life as characters">Objects</option></select></span></div>
   </div>
   <div class="row">
     <button id="go" class="go">Action</button>
@@ -498,7 +510,9 @@ window.addEventListener("load", function () {
     if (s.stage && s.stage !== "idle") enterRun();
   });
 });
-var opts = { fmt: "916", len: "12", genre: "drama", cast: "realistic human characters" };
+// genre & cast default to EMPTY: nothing forced into the prompt, so a named
+// character (e.g. Squidward) renders as itself instead of being humanized
+var opts = { fmt: "916", len: "12", genre: "", cast: "" };
 document.querySelectorAll(".seg").forEach(function (seg) {
   var k = seg.dataset.k;
   seg.querySelectorAll(".chip").forEach(function (ch) {
@@ -508,6 +522,13 @@ document.querySelectorAll(".seg").forEach(function (seg) {
       opts[k] = ch.dataset.v;
     };
   });
+});
+["Genre", "Cast"].forEach(function (which) {
+  var sel = $("sel" + which), key = which.toLowerCase();
+  sel.onchange = function () {
+    opts[key] = sel.value;
+    sel.classList.toggle("set", !!sel.value);  // colour it when a choice is made
+  };
 });
 
 // тренд-скаут: живі теми → тап вставляє логлайн
