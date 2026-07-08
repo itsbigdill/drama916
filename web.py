@@ -105,37 +105,42 @@ def start_run(logline: str, dry_run: bool, vertical: bool,
     threading.Thread(target=job, daemon=True).start()
 
 
-PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</title>
+PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; }
   body { margin: 0; min-height: 100vh; font: 16px/1.5 -apple-system, system-ui;
-         color: #22213A; background: #F7F7FC; display: flex; flex-direction: column;
+         color: #1E1B39; background: #EFE9FF; display: flex; flex-direction: column;
          align-items: center; padding: 48px 18px; overflow-x: hidden; }
-  body::before { content: ""; position: fixed; inset: 0; z-index: -1; background:
-    radial-gradient(55% 40% at 12% 5%, rgba(108,92,231,.10), transparent 70%),
-    radial-gradient(45% 40% at 90% 12%, rgba(160,140,255,.08), transparent 70%),
-    radial-gradient(70% 50% at 50% 108%, rgba(108,92,231,.06), transparent 70%); }
+  body::before { content: ""; position: fixed; inset: 0; z-index: -1;
+    background:
+      radial-gradient(60% 45% at 8% 0%, rgba(168,85,247,.34), transparent 60%),
+      radial-gradient(55% 45% at 100% 8%, rgba(232,121,249,.24), transparent 60%),
+      radial-gradient(80% 55% at 50% 112%, rgba(124,58,237,.28), transparent 62%),
+      linear-gradient(165deg, #ECE5FF 0%, #EEE6FF 45%, #F3ECFF 100%); }
   .mono { font-family: "JetBrains Mono", monospace; }
-  .wordmark { font-family: "Unbounded", system-ui; font-weight: 800; font-size: 28px;
-              letter-spacing: -.02em; margin-bottom: 26px; color: #26244a; }
-  .dot { color: #6C5CE7; }
+  .wordmark { font-family: "Unbounded", system-ui; font-weight: 800; font-size: 30px;
+              letter-spacing: -.02em; margin-bottom: 28px; color: #241A47; }
+  .dot { background: linear-gradient(92deg, #A855F7, #E879F9);
+         -webkit-background-clip: text; background-clip: text; color: transparent;
+         text-shadow: 0 0 22px rgba(168,85,247,.45); }
   #panes { width: 100%; max-width: 680px; display: flex; flex-direction: column; gap: 20px; }
   .glass { width: 100%; border-radius: 30px; padding: 30px 30px 32px;
-           background: rgba(255,255,255,.82);
-           border: 1px solid #EAE8F6;
-           backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
-           box-shadow: 0 24px 70px rgba(90,70,200,.12), 0 3px 10px rgba(34,33,58,.05),
-                       inset 0 1px 0 #FFFFFF; }
-  textarea { width: 100%; border: 1px solid transparent; resize: none; background: #FDFDFF;
-             border-radius: 16px; padding: 15px 18px; font-size: 17px; line-height: 1.5;
+           background: rgba(255,255,255,.58);
+           border: 1px solid rgba(255,255,255,.65);
+           backdrop-filter: blur(34px) saturate(1.5); -webkit-backdrop-filter: blur(34px) saturate(1.5);
+           box-shadow: 0 30px 80px rgba(90,50,190,.20), 0 4px 14px rgba(60,30,120,.08),
+                       inset 0 1px 0 rgba(255,255,255,.85); }
+  textarea { width: 100%; border: 1px solid transparent; resize: none;
+             background: rgba(255,255,255,.55);
+             border-radius: 18px; padding: 16px 18px; font-size: 17px; line-height: 1.5;
              font-family: inherit; color: inherit; outline: none; min-height: 74px;
-             box-shadow: inset 0 0 0 1px #F0EEF9;
+             box-shadow: inset 0 0 0 1px rgba(168,85,247,.14);
              transition: border-color .2s, box-shadow .25s; }
-  textarea:focus { border-color: #B9AFFF; box-shadow: 0 0 0 4px rgba(108,92,231,.12); }
-  textarea::placeholder { color: #A9A6C6; }
+  textarea:focus { border-color: #C79BFF; box-shadow: 0 0 0 4px rgba(168,85,247,.16); }
+  textarea::placeholder { color: #A99CC8; }
   textarea.invalid { border-color: #E5484D; box-shadow: 0 0 0 4px rgba(229,72,77,.14);
                      animation: shake .35s ease; }
   @keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
@@ -144,12 +149,12 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</titl
   .trtabs { display: inline-flex; border: 1px solid #E7E5F3; border-radius: 10px; overflow: hidden; background: #F4F3FA; }
   .trtab { border: 0; background: transparent; cursor: pointer; padding: 5px 12px;
            font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 700; color: #8B88AC; }
-  .trtab.on { background: #ECE9FF; color: #5646D6; }
+  .trtab.on { background: #F3E8FF; color: #7C3AED; }
   .trrow { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
   .tpill { background: #F4F3FA; border: 1px solid #E7E5F3; border-radius: 999px;
            padding: 8px 15px; cursor: pointer; font-size: 13px; font-weight: 600;
            color: #454363; transition: transform .1s, border-color .2s, background .2s; }
-  .tpill:hover { border-color: #C9BFFF; background: #ECE9FF; color: #5646D6; }
+  .tpill:hover { border-color: #D8B4FE; background: #F3E8FF; color: #7C3AED; }
   .tpill:active { transform: scale(.95); }
   .tskel { width: 110px; height: 34px; border-radius: 999px; background: #F4F3FA;
            border: 1px solid #E7E5F3; animation: skel 1.1s ease-in-out infinite; }
@@ -167,7 +172,7 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</titl
           font-family: "JetBrains Mono", monospace; font-size: 12.5px; font-weight: 700;
           transition: background .18s, color .18s, transform .1s; }
   .chip:active { transform: scale(.94); }
-  .chip.on { background: #ECE9FF; color: #5646D6; box-shadow: inset 0 0 0 1px #C9BFFF; }
+  .chip.on { background: #F3E8FF; color: #7C3AED; box-shadow: inset 0 0 0 1px #D8B4FE; }
   .sel { position: relative; display: inline-flex; }
   .sel::after { content: "\2304"; position: absolute; right: 12px; top: 50%;
                 transform: translateY(-58%); pointer-events: none; color: #8B88AC; font-size: 13px; }
@@ -176,19 +181,23 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</titl
                 padding: 8px 34px 8px 14px; color: #55536E;
                 font-family: "JetBrains Mono", monospace; font-size: 12.5px; font-weight: 700;
                 transition: border-color .18s, background .18s; }
-  .sel select:hover { background: #ECE9FF; }
-  .sel select:focus { border-color: #B9AFFF; box-shadow: 0 0 0 4px rgba(108,92,231,.12); }
+  .sel select:hover { background: #F3E8FF; }
+  .sel select:focus { border-color: #C79BFF; box-shadow: 0 0 0 4px rgba(168,85,247,.14); }
   /* an active (non-Auto) choice reads as "on", matching the chips */
-  .sel select.set { color: #5646D6; background: #ECE9FF; border-color: #C9BFFF; }
-  .go { flex: 1; border: 0; border-radius: 16px; padding: 14px; cursor: pointer;
-        background: linear-gradient(180deg, #7A5CFF, #5B45E0);
+  .sel select.set { color: #7C3AED; background: #F3E8FF; border-color: #D8B4FE; }
+  .go { flex: 1; border: 0; border-radius: 999px; padding: 16px; cursor: pointer;
+        display: inline-flex; align-items: center; justify-content: center; gap: 12px;
+        background: linear-gradient(96deg, #E879F9 0%, #A855F7 48%, #7C3AED 100%);
         color: #FFFFFF; font-family: "Unbounded", system-ui; font-weight: 800;
         font-size: 15px; letter-spacing: .12em; text-transform: uppercase;
-        box-shadow: 0 16px 36px rgba(108,92,231,.35), inset 0 1px 0 rgba(255,255,255,.35);
-        transition: transform .15s ease; }
-  .go:hover { transform: translateY(-2px); filter: brightness(1.06); }
+        box-shadow: 0 18px 40px rgba(168,85,247,.45), 0 2px 0 rgba(255,255,255,.25) inset;
+        transition: transform .15s ease, filter .15s ease; }
+  .go::before { content: "\2192"; display: inline-flex; align-items: center; justify-content: center;
+        width: 30px; height: 30px; border-radius: 50%; background: rgba(255,255,255,.28);
+        font-size: 16px; font-weight: 400; }
+  .go:hover { transform: translateY(-2px); filter: brightness(1.07); }
   .go:active { transform: translateY(0); filter: brightness(.97); }
-  .go:disabled { opacity: .4; box-shadow: none; transform: none; }
+  .go:disabled { opacity: .45; box-shadow: none; transform: none; }
 
   #steps { display: none; justify-content: space-between; margin: 26px 4px 0; }
   .step { text-align: center; flex: 1; font-family: "JetBrains Mono", monospace;
@@ -374,7 +383,7 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</titl
   .foot a { color: #A9A6C6; }
 </style>
 <body>
-<div class="wordmark">showrunner<span class="dot">.</span></div>
+<div class="wordmark">drama<span class="dot">916</span></div>
 
 <div id="panes">
   <div id="formPane" class="glass">
@@ -386,9 +395,7 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</titl
   <div id="trends" class="trrow"></div>
 
   <div class="opts">
-    <div class="opt"><span class="ol">Ratio</span><span class="seg" data-k="fmt"><button class="chip on" data-v="916">9:16</button><button class="chip" data-v="169">16:9</button></span></div>
-    <div class="opt"><span class="ol">Length</span><span class="seg" data-k="len"><button class="chip" data-v="3">15s</button><button class="chip" data-v="6">30s</button><button class="chip" data-v="9">45s</button><button class="chip on" data-v="12">60s</button></span></div>
-    <div class="opt"><span class="ol">Genre</span><span class="sel"><select id="selGenre"><option value="">Auto</option><option value="drama">Drama</option><option value="comedy">Comedy</option><option value="noir">Noir</option><option value="comic book style">Comic</option><option value="advertisement">Ad</option></select></span></div>
+    <div class="opt"><span class="ol">Length</span><span class="seg" data-k="len"><button class="chip" data-v="3">15s</button><button class="chip on" data-v="6">30s</button><button class="chip" data-v="9">45s</button><button class="chip" data-v="12">60s</button></span></div>
     <div class="opt"><span class="ol">Cast</span><span class="sel"><select id="selCast"><option value="">Auto</option><option value="realistic human characters">Real</option><option value="anthropomorphic fruit and vegetable characters">Fruits</option><option value="animal characters">Animals</option><option value="everyday objects brought to life as characters">Objects</option></select></span></div>
   </div>
   <div class="row">
@@ -510,9 +517,9 @@ window.addEventListener("load", function () {
     if (s.stage && s.stage !== "idle") enterRun();
   });
 });
-// genre & cast default to EMPTY: nothing forced into the prompt, so a named
-// character (e.g. Squidward) renders as itself instead of being humanized
-var opts = { fmt: "916", len: "12", genre: "", cast: "" };
+// drama916: always vertical 9:16, always drama. Cast optional (empty by default
+// so a named character renders as itself instead of being humanized).
+var opts = { fmt: "916", len: "6", genre: "", cast: "" };
 document.querySelectorAll(".seg").forEach(function (seg) {
   var k = seg.dataset.k;
   seg.querySelectorAll(".chip").forEach(function (ch) {
@@ -523,13 +530,10 @@ document.querySelectorAll(".seg").forEach(function (seg) {
     };
   });
 });
-["Genre", "Cast"].forEach(function (which) {
-  var sel = $("sel" + which), key = which.toLowerCase();
-  sel.onchange = function () {
-    opts[key] = sel.value;
-    sel.classList.toggle("set", !!sel.value);  // colour it when a choice is made
-  };
-});
+$("selCast").onchange = function () {
+  opts.cast = this.value;
+  this.classList.toggle("set", !!this.value);
+};
 
 // тренд-скаут: живі теми → тап вставляє логлайн
 var trCache = {};
@@ -612,7 +616,7 @@ $("go").onclick = function () {
   $("log").classList.remove("invalid");
   $("go").disabled = true; $("log").disabled = true; t0 = Date.now();
   fetch("/run", { method: "POST", headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ logline: logline, vertical: opts.fmt === "916", uid: uid,
+                  body: JSON.stringify({ logline: logline, vertical: true, uid: uid,
                                          shots: +opts.len, genre: opts.genre, cast: opts.cast }) })
     .then(function (r) {
       if (!r.ok) {
