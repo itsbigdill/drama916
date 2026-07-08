@@ -215,15 +215,25 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
                                       "reshot": reshot,
                                       "last_reason": reports[-1]["reason"] if reports else ""}))
 
-    # Voice the dialogue — every line is spoken (no burned-in subtitles).
+    # Voice the dialogue — each line spoken by its character, voice by gender.
     audio: dict[int, Path] = {}
     if not dry_run:
         from .tts import voice_all
+        char_gender = {c.get("name"): (c.get("gender") or "neutral").lower()
+                       for c in screenplay.get("characters", [])}
+        scene_speaker = {sc.get("id"): sc.get("speaker")
+                         for sc in screenplay.get("scenes", [])}
+
+        def voice_for(shot: dict) -> str:
+            gender = char_gender.get(scene_speaker.get(shot.get("scene_id")), "neutral")
+            return config.VOICE_BY_GENDER.get(gender, config.TTS_VOICE)
+
         n_lines = sum(1 for s in shot_list if str(s.get("subtitle", "")).strip())
         if n_lines:
             notify("voice", f"0/{n_lines}")
             audio = voice_all(shot_list, run_dir / "audio", ledger,
-                              lambda d, n: notify("voice", f"{d}/{n}"))
+                              lambda d, n: notify("voice", f"{d}/{n}"),
+                              voice_for=voice_for)
 
     console.rule("5/5 Assemble")
     notify("cut", "")

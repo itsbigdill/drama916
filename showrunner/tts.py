@@ -46,14 +46,16 @@ def synthesize(text: str, out_path: Path, ledger: Ledger,
 
 def voice_all(shots: list[dict], audio_dir: Path, ledger: Ledger,
               progress: Callable[[int, int], None] | None = None,
-              voice: str | None = None) -> dict[int, Path]:
-    """Synthesize every shot that has a line. Serial (TTS is fast, ~2s/line)
-    and failure-tolerant: a line that fails is simply left silent."""
+              voice_for: Callable[[dict], str] | None = None) -> dict[int, Path]:
+    """Synthesize every shot that has a line, each in its speaker's voice.
+    voice_for(shot) -> voice name (defaults to the config voice). Serial (TTS
+    is fast, ~2s/line) and failure-tolerant: a failed line is left silent."""
     audio_dir.mkdir(parents=True, exist_ok=True)
     out: dict[int, Path] = {}
     lines = [s for s in shots if str(s.get("subtitle", "")).strip()]
     for i, shot in enumerate(lines, 1):
         wav = audio_dir / f"shot_{shot['id']:02}.wav"
+        voice = voice_for(shot) if voice_for else config.TTS_VOICE
         try:
             if synthesize(shot["subtitle"], wav, ledger, voice=voice):
                 out[shot["id"]] = wav

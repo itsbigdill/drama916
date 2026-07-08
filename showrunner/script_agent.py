@@ -5,12 +5,20 @@ from .ledger import Ledger
 from .llm import chat_json
 
 SYSTEM = """You are an award-winning short-form screenwriter. Given a logline you
-write a complete screenplay for a ~60 second silent-with-subtitles short drama.
-Keep EVERY character the logline names — never drop one to simplify the story. Reply ONLY with JSON:
+write a complete screenplay for a ~45 second VERTICAL short DRAMA. The film is
+VOICED: the characters SPEAK their lines aloud (there are no on-screen subtitles),
+so write real dialogue, not narration.
+Keep EVERY character the logline names — never drop one to simplify the story.
+Each scene carries exactly ONE spoken line, attributed to the character who says
+it. Give every character a gender so their line can be voiced correctly.
+Reply ONLY with JSON:
 {"title": str, "logline": str, "style": str,  # one reusable visual style sentence
  "caption": str,  # TikTok caption: one hook line under 100 chars, then 4 hashtags
- "characters": [{"name": str, "visual": str}],  # stable visual descriptor, reused verbatim in every shot
- "scenes": [{"id": int, "setting": str, "action": str, "subtitle": str, "mood": str}]}"""
+ "characters": [{"name": str, "gender": "male"|"female"|"neutral", "visual": str}],
+ "scenes": [{"id": int, "setting": str, "action": str,
+             "speaker": str,     # the character NAME who speaks this scene's line
+             "subtitle": str,    # their spoken line (short, punchy, emotional — this is voiced)
+             "mood": str}]}"""
 
 
 def write_screenplay(logline: str, ledger: Ledger, on_delta=None, thinking: bool = True) -> dict:
