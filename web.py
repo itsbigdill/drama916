@@ -319,6 +319,18 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>showrunner</titl
   .bbtn.dr:hover { color: #E5484D; }
   .bbtn:disabled { opacity: .35; transform: none; }
   @media (hover: hover) { .bx { opacity: 0; } .bcell:hover .bx { opacity: 1; } }
+  .bimg { position: relative; }
+  .rnote { position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 3;
+           display: none; gap: 6px; }
+  .rnote.open { display: flex; }
+  .rnote input { flex: 1; min-width: 0; border: 0; border-radius: 11px; padding: 9px 12px;
+                 font: 500 12.5px -apple-system, system-ui; color: #33314E;
+                 background: rgba(255,255,255,.96); outline: none;
+                 box-shadow: 0 6px 18px rgba(34,33,58,.28), inset 0 0 0 1px #E7E5F3; }
+  .rnote input::placeholder { color: #A9A6C6; }
+  .rgo { flex: 0 0 auto; width: 34px; border: 0; border-radius: 11px; cursor: pointer;
+         background: linear-gradient(180deg, #7A5CFF, #5B45E0); color: #FFF; font-size: 15px;
+         box-shadow: 0 6px 16px rgba(108,92,231,.4); }
   .bscene { font-size: 12.5px; line-height: 1.5; color: #9490B4; margin-top: 6px; }
   .bscene b { color: #6B6890; font-weight: 600; }
   .bcell.rf img { filter: saturate(.35) brightness(1.12) blur(2px); opacity: .68; }
@@ -726,10 +738,13 @@ function showBoard(s) {
       return '<div class="bcell" data-id="' + sh.id + '"><span class="bn">' + String(sh.id).padStart(2, "0") + '</span>' +
         '<span class="bx"><button class="bbtn rd" title="redraw">\u21BB</button>' +
         '<button class="bbtn dr" title="remove">\u2715</button></span>' +
+        '<div class="bimg">' +
         (sh.img
           ? '<img src="/video?p=' + encodeURIComponent(sh.img) + '&t=' + Date.now() + '" ' +
             'onerror="this.outerHTML=\'<div class=&quot;bfall&quot;></div>\'">'
           : '<div class="bfall"></div>') +
+        '<div class="rnote"><input maxlength="200" placeholder="what to fix? (optional)">' +
+        '<button class="rgo" title="redraw">\u21BB</button></div></div>' +
         '<div class="bs">' + (sh.subtitle || "") + '</div>' +
         '<div class="bscene">' + scene + '</div></div>';
     }).join("") + "</div>";
@@ -760,24 +775,42 @@ function wireBoardCells(s) {
     var id = +cell.dataset.id;
     var shot = (s.board.shots || []).filter(function (x) { return x.id === id; })[0] || {};
     var rd = cell.querySelector(".rd"), dr = cell.querySelector(".dr");
+    var form = cell.querySelector(".rnote"), input = form && form.querySelector("input");
     if ((s.board.shots || []).length <= 1 && dr) dr.disabled = true;
-    if (rd) rd.onclick = function () {
+
+    function runRedraw() {
       if (cell.classList.contains("rf")) return;
+      var note = input ? input.value.trim() : "";
+      if (form) form.classList.remove("open");
       cell.classList.add("rf"); rd.disabled = true;
-      // send the shot's own data so redraw survives a server restart
+      // send the shot's own data (survives restart) + optional director's note
       fetch("/redraw", { method: "POST", headers: { "Content-Type": "application/json" },
                          body: JSON.stringify({ id: id, img: shot.img, prompt: shot.prompt,
-                                                size: s.board.size }) })
+                                                size: s.board.size, note: note }) })
         .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
         .then(function (res) {
           cell.classList.remove("rf"); rd.disabled = false;
           if (res.ok) {
+            if (res.d.prompt) shot.prompt = res.d.prompt;  // build future redraws on it
+            if (input) input.value = "";
             var img = cell.querySelector("img");
             if (img) img.src = "/video?p=" + encodeURIComponent(res.d.img) + "&t=" + Date.now();
           } else { reportErr("redraw: " + (res.d.error || "failed")); }
         })
-        .catch(function () { cell.classList.remove("rf"); rd.disabled = false; });
+        .catch(function () { cell.classList.remove("rf"); rd.disabled = false;
+                             reportErr("redraw: server unreachable"); });
+    }
+    // ↻ opens a small note field; a second ↻ (or Enter) fires the redraw
+    if (rd) rd.onclick = function () {
+      if (!form) { runRedraw(); return; }
+      if (form.classList.contains("open")) { runRedraw(); }
+      else { form.classList.add("open"); if (input) input.focus(); }
     };
+    if (input) input.onkeydown = function (e) {
+      if (e.key === "Enter") { e.preventDefault(); runRedraw(); }
+      else if (e.key === "Escape") { form.classList.remove("open"); }
+    };
+    if (form) { var go = form.querySelector(".rgo"); if (go) go.onclick = runRedraw; }
     if (dr) dr.onclick = function () {
       fetch("/drop", { method: "POST", headers: { "Content-Type": "application/json" },
                        body: JSON.stringify({ id: id }) })
@@ -977,6 +1010,7 @@ class H(BaseHTTPRequestHandler):
             prompt = (shot or {}).get("prompt") or req.get("prompt")
             img = (shot or {}).get("img") or req.get("img")
             size = size or req.get("size") or "720*1280"
+            note = str(req.get("note", "")).strip()[:200]
             if not img or not prompt:
                 return self._json(404, {"error": "shot not found"})
             runs = (Path(__file__).parent / "runs").resolve()
@@ -985,13 +1019,36 @@ class H(BaseHTTPRequestHandler):
                 return self._json(400, {"error": "invalid frame path"})
             from showrunner.ledger import Ledger
             from showrunner.storyboard import generate_still
+            ledger = Ledger()
+            # a director's note steers the redraw: rewrite the prompt to honor the
+            # fix while keeping the same character(s) and style, then repaint
+            if note:
+                from showrunner import config as srconfig
+                from showrunner.llm import chat
+                try:
+                    prompt = chat("redraw_note", srconfig.MODEL_CHEAP,
+                                  "You rewrite a single image prompt to apply a director's "
+                                  "correction. Keep the same character(s), wardrobe and visual "
+                                  "style; change only what the note asks. Reply with the rewritten "
+                                  "prompt only, no preamble.",
+                                  f"PROMPT: {prompt}\nDIRECTOR'S NOTE: {note}",
+                                  ledger, thinking=False).strip() or prompt
+                except Exception:
+                    prompt = prompt + " " + note  # fallback: just append the note
             refs = sorted(out.parent.parent.glob("cast/*.png")) or None
             try:  # синхронно: 12-30с; фронт показує frost на комірці
-                generate_still(prompt, size, out, Ledger(), refs=refs)
+                generate_still(prompt, size, out, ledger, refs=refs)
             except Exception as e:
                 detail = getattr(getattr(e, "response", None), "text", "") or str(e)
                 return self._json(502, {"error": detail[:200]})
-            return self._json(200, {"ok": True, "img": img})
+            # persist the revised prompt into live state so re-redraws build on it
+            with lock:
+                lb = state.get("board")
+                if lb:
+                    for s2 in lb.get("shots", []):
+                        if s2["id"] == sid:
+                            s2["prompt"] = prompt
+            return self._json(200, {"ok": True, "img": img, "prompt": prompt})
         if self.path == "/clientlog":
             n = int(self.headers.get("Content-Length", 0))
             body = json.loads(self.rfile.read(n) or b"{}")
