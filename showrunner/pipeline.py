@@ -215,9 +215,19 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
                                       "reshot": reshot,
                                       "last_reason": reports[-1]["reason"] if reports else ""}))
 
+    # Voice the dialogue — every line is spoken (no burned-in subtitles).
+    audio: dict[int, Path] = {}
+    if not dry_run:
+        from .tts import voice_all
+        n_lines = sum(1 for s in shot_list if str(s.get("subtitle", "")).strip())
+        if n_lines:
+            notify("voice", f"0/{n_lines}")
+            audio = voice_all(shot_list, run_dir / "audio", ledger,
+                              lambda d, n: notify("voice", f"{d}/{n}"))
+
     console.rule("5/5 Assemble")
     notify("cut", "")
-    final = assemble(clip_paths, shot_list, run_dir)
+    final = assemble(clip_paths, shot_list, run_dir, audio=audio)
 
     ledger.save(str(run_dir / "run_report.json"))
     ledger.print_table()

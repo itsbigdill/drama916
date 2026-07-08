@@ -1,28 +1,15 @@
-"""Concat clips + burn subtitles into the final film."""
+"""Concat clips into one film, crossfaded, with spoken dialogue mixed in.
+
+No burned-in subtitles — each shot's line is voiced (see tts.py) and mixed
+onto the video at that shot's time window.
+"""
 
 import subprocess
 from pathlib import Path
 
 from . import config
 
-
-def _srt_time(seconds: float) -> str:
-    h, rem = divmod(int(seconds), 3600)
-    m, s = divmod(rem, 60)
-    return f"{h:02}:{m:02}:{s:02},000"
-
-
 FADE = 0.4  # seconds of crossfade between shots — turns cuts into one film
-
-
-def write_srt(shots: list[dict], path: Path):
-    lines = []
-    for i, shot in enumerate(shots):
-        start = i * (config.CLIP_SECONDS - FADE)
-        end = start + config.CLIP_SECONDS - FADE - 0.2
-        lines += [str(i + 1), f"{_srt_time(start)} --> {_srt_time(end)}",
-                  shot.get("subtitle", ""), ""]
-    path.write_text("\n".join(lines), encoding="utf-8")
 
 
 def _size_of(clip: Path) -> str:
@@ -63,38 +50,58 @@ def _dur(clip: Path) -> float:
     return float(out)
 
 
-def assemble(clip_paths: list[Path], shots: list[dict], run_dir: Path) -> Path:
+def assemble(clip_paths: list[Path], shots: list[dict], run_dir: Path,
+             audio: dict[int, Path] | None = None) -> Path:
+    """audio: shot_id -> wav of that shot's spoken line (optional)."""
+    audio = audio or {}
     clip_paths = _normalize(clip_paths)
-    srt = run_dir / "subtitles.srt"
-    write_srt(shots, srt)
-    final = run_dir / "final.mp4"
-    style = "FontSize=22,OutlineColour=&H80000000,BorderStyle=3"
+    durs = [_dur(p) for p in clip_paths]
+    # each shot's start on the crossfaded timeline (mirror the xfade offsets)
+    offsets = [0.0]
+    for i in range(1, len(clip_paths)):
+        offsets.append(offsets[-1] + durs[i - 1] - FADE)
 
+    final = run_dir / "final.mp4"
+    has_audio = any(s.get("id") in audio for s in shots)
+    video_out = (run_dir / "silent.mp4") if has_audio else final
+
+    # 1) the (subtitle-free) video
     if len(clip_paths) == 1:
         subprocess.run(
             ["ffmpeg", "-y", "-loglevel", "error", "-i", str(clip_paths[0].resolve()),
-             "-vf", f"subtitles={srt.name}:force_style='{style}'",
-             "-c:v", "libx264", "-pix_fmt", "yuv420p", final.name],
+             "-c:v", "libx264", "-pix_fmt", "yuv420p", video_out.name],
             check=True, cwd=run_dir)
+    else:
+        cmd = ["ffmpeg", "-y", "-loglevel", "error"]
+        for p in clip_paths:
+            cmd += ["-i", str(p.resolve())]
+        chain = [f"[{i}:v]fps=24,settb=AVTB,format=yuv420p[p{i}]"
+                 for i in range(len(clip_paths))]
+        prev = "[p0]"
+        for i in range(1, len(clip_paths)):
+            out = f"[x{i}]"
+            chain.append(f"{prev}[p{i}]xfade=transition=fade:"
+                         f"duration={FADE}:offset={offsets[i]:.3f}{out}")
+            prev = out
+        subprocess.run(cmd + ["-filter_complex", ";".join(chain), "-map", prev,
+                              "-c:v", "libx264", "-pix_fmt", "yuv420p", video_out.name],
+                       check=True, cwd=run_dir)
+
+    if not has_audio:
         return final
 
-    # crossfade chain: clips melt into each other instead of hard-cutting —
-    # the difference between "N separate videos" and one film
-    durs = [_dur(p) for p in clip_paths]
-    cmd = ["ffmpeg", "-y", "-loglevel", "error"]
-    for p in clip_paths:
-        cmd += ["-i", str(p.resolve())]
-    chain = [f"[{i}:v]fps=24,settb=AVTB,format=yuv420p[p{i}]"
-             for i in range(len(clip_paths))]
-    prev, off = "[p0]", 0.0
-    for i in range(1, len(clip_paths)):
-        off += durs[i - 1] - FADE
-        out = f"[x{i}]"
-        chain.append(f"{prev}[p{i}]xfade=transition=fade:duration={FADE}:offset={off:.3f}{out}")
-        prev = out
-    chain.append(f"{prev}subtitles={srt.name}:force_style='{style}'[vout]")
-    # cwd=run_dir so the subtitles filter finds its file (clip inputs are absolute)
-    subprocess.run(cmd + ["-filter_complex", ";".join(chain), "-map", "[vout]",
-                          "-c:v", "libx264", "-pix_fmt", "yuv420p", final.name],
+    # 2) mix each line onto the timeline at its shot's offset, then mux
+    cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", video_out.name]
+    voiced = [(idx, s) for idx, s in enumerate(shots) if s.get("id") in audio]
+    for _, s in voiced:
+        cmd += ["-i", str(audio[s["id"]].resolve())]
+    fc, labels = [], []
+    for j, (idx, s) in enumerate(voiced, start=1):
+        ms = int(offsets[idx] * 1000)
+        fc.append(f"[{j}:a]adelay={ms}|{ms}[a{j}]")
+        labels.append(f"[a{j}]")
+    fc.append("".join(labels) + f"amix=inputs={len(labels)}:normalize=0[aout]")
+    subprocess.run(cmd + ["-filter_complex", ";".join(fc), "-map", "0:v", "-map", "[aout]",
+                          "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", final.name],
                    check=True, cwd=run_dir)
     return final

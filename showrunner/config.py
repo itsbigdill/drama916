@@ -16,6 +16,10 @@ MODEL_CHEAP = "qwen3.6-flash"     # smoke tests, summaries
 MODEL_VIDEO = "happyhorse-1.1-t2v"
 MODEL_VIDEO_I2V = "happyhorse-1.1-i2v"   # approved still becomes the first frame
 MODEL_IMAGE = "qwen-image-2.0-pro"
+# Voice — the dialogue lines are spoken instead of shown as burned-in subtitles
+MODEL_TTS = "qwen3-tts-flash"
+TTS_VOICE = "Cherry"              # warm neutral; Ethan (m) also available
+COST_PER_TTS_LINE_USD = 0.002    # rough; qwen3-tts-flash is per-character and cheap
 COST_PER_STILL_USD = 0.04         # qwen-image-2.0-pro, ще не підтверджено консоллю
 # happyhorse-1.1 intl list price per OUTPUT second (July 2026): ~0.9 RMB/s 720p,
 # ~1.2 RMB/s 1080p -> USD; promo in console may be ~40% lower
