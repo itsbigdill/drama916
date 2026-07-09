@@ -27,7 +27,7 @@ state = {"running": False, "stage": "idle", "detail": "", "video": None,
 lock = threading.Lock()
 # one approve Event PER RUN: an abandoned run keeps waiting on its own dead
 # event and can never sneak into the paid FILM stage.
-current_approve = {"ev": threading.Event(), "edits": {"drop": set()}}
+current_approve = {"ev": threading.Event(), "edits": {"drop": set(), "order": []}}
 
 
 def start_run(logline: str, dry_run: bool, vertical: bool,
@@ -36,13 +36,13 @@ def start_run(logline: str, dry_run: bool, vertical: bool,
         state["run_id"] += 1
         my_run = state["run_id"]
     my_event = threading.Event()
-    my_edits = {"drop": set()}
+    my_edits = {"drop": set(), "order": []}
     current_approve["ev"] = my_event
     current_approve["edits"] = my_edits
 
     def approval():
         my_event.wait()
-        return {"drop": sorted(my_edits["drop"])}
+        return {"drop": sorted(my_edits["drop"]), "order": list(my_edits["order"])}
 
     def cb(stage: str, detail: str):
         with lock:
@@ -126,7 +126,19 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   .dot { background: linear-gradient(92deg, #A855F7, #E879F9);
          -webkit-background-clip: text; background-clip: text; color: transparent;
          text-shadow: 0 0 22px rgba(168,85,247,.45); }
-  #panes { width: 100%; max-width: 680px; display: flex; flex-direction: column; gap: 20px; }
+  #panes { width: 100%; max-width: 940px; display: flex; flex-direction: column; gap: 20px; align-items: center; }
+  #formPane { max-width: 680px; }
+  #runPane { align-self: stretch; }
+  /* two-column production: narrative (script + critic) left, storyboard right */
+  #prod { display: grid; grid-template-columns: minmax(0, 250px) minmax(0, 1fr);
+          gap: 24px; margin-top: 22px; align-items: start; }
+  #leftcol { min-width: 0; }
+  #rightcol { min-width: 0; }
+  @media (max-width: 680px) { #prod { grid-template-columns: 1fr; gap: 16px; } }
+  .bcell { cursor: grab; }
+  .bcell:active { cursor: grabbing; }
+  .bcell.dragging { opacity: .35; }
+  .bcell.dragover { outline: 2px dashed #A855F7; outline-offset: 3px; }
   .glass { width: 100%; border-radius: 30px; padding: 30px 30px 32px;
            background: rgba(255,255,255,.58);
            border: 1px solid rgba(255,255,255,.65);
@@ -214,7 +226,8 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   @keyframes pulse { 50% { transform: scale(1.4); } }
   #detail { text-align: center; font-family: "JetBrains Mono", monospace; font-size: 12.5px;
             color: #8B88AC; margin-top: 12px; min-height: 18px; }
-  #live:not(:empty) { margin-top: 20px; }
+  #liveR:not(:empty) { margin-bottom: 14px; }
+  #liveL:not(:empty) { margin-bottom: 14px; }
 
   #runPane { display: none; }
   #panes.running #runPane { display: block; animation: rise .5s cubic-bezier(.22,.8,.3,1); }
@@ -429,29 +442,35 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
     <div class="step" data-s="film"><div class="d"></div>FILM</div>
     <div class="step" data-s="cut"><div class="d"></div>CUT</div>
   </div>
-  <div id="live"></div>
-  <div id="feed"></div>
+
+  <div id="prod">
+    <div id="leftcol">
+      <div id="liveL"></div>
+      <div id="feed"></div>
+    </div>
+    <div id="rightcol">
+      <div id="liveR"></div>
+      <div id="board" style="display:none">
+        <div id="shotlist"></div>
+        <div class="row" style="margin-top:18px">
+          <button id="film" class="go">Film it</button>
+        </div>
+        <button class="graybtn" onclick="startOver()">Start over</button>
+      </div>
+      <div id="cinema">
+        <video id="player" controls playsinline></video>
+        <div id="title"></div>
+        <div id="meta"></div>
+        <div id="cap"></div>
+        <div class="row">
+          <a id="dl" class="chip" download="showrunner.mp4">Download</a>
+          <button id="copycap" class="chip">Copy caption</button>
+          <button class="ghost" onclick="startOver()" style="margin-left:auto">New film</button>
+        </div>
+      </div>
+    </div>
+  </div>
   <div id="dbg" style="display:none;margin-top:10px;font:10px/1.4 monospace;color:#C6C3DE"></div>
-
-  <div id="board" style="display:none">
-    <div id="shotlist"></div>
-    <div class="row" style="margin-top:18px">
-      <button id="film" class="go">Film it</button>
-    </div>
-    <button class="graybtn" onclick="startOver()">Start over</button>
-  </div>
-
-  <div id="cinema">
-    <video id="player" controls playsinline></video>
-    <div id="title"></div>
-    <div id="meta"></div>
-    <div id="cap"></div>
-    <div class="row">
-      <a id="dl" class="chip" download="showrunner.mp4">Download</a>
-      <button id="copycap" class="chip">Copy caption</button>
-      <button class="ghost" onclick="startOver()" style="margin-left:auto">New film</button>
-    </div>
-  </div>
   <div id="err"></div>
   </div><!-- /runPane -->
 
@@ -672,18 +691,19 @@ function syncThumbs(el, mode, label, wrapCls, cellWrap, urls) {
   });
 }
 function renderLive(s) {
-  var L = s.live || {}, el = $("live");
+  var L = s.live || {}, elR = $("liveR"), elL = $("liveL");
+  // RIGHT column: images (stills appearing, then the ghost grid while filming)
   if (s.stage === "stills" && L.stills && L.stills.length) {
-    syncThumbs(el, "stills", "storyboard", "lthumbs", false,
+    syncThumbs(elR, "stills", "storyboard", "lthumbs", false,
                L.stills.map(function (st) { return st.img; }));
-    return;
-  }
-  if ((s.stage === "film" || s.stage === "cut") && s.board &&
+  } else if ((s.stage === "film" || s.stage === "cut") && s.board &&
       (s.board.shots || []).some(function (sh) { return sh.img; })) {
-    syncThumbs(el, "grid-" + s.stage, s.stage === "cut" ? "assembling" : "filming",
+    syncThumbs(elR, "grid-" + s.stage, s.stage === "cut" ? "assembling" : "filming",
                "gwrap", true, s.board.shots.map(function (sh) { return sh.img; }));
-    return;
+  } else if (elR.dataset.mode) {  // approve/done \u2014 the board/cinema own the right
+    elR.dataset.mode = ""; elR.innerHTML = "";
   }
+  // LEFT column: the writer stream, then the critic's live decisions
   var h = "";
   if (s.stage === "script" && L.script && L.script.tail) {
     h = '<div class="llab">writer \u00B7 ' + (L.script.kind === "thinking" ? "thinking" : "writing") + '</div>' +
@@ -695,8 +715,7 @@ function renderLive(s) {
              (r.fixes && r.fixes.length ? " \u2014 " + r.fixes.join("; ").replace(/</g, "&lt;") : " \u2014 approved") + '</div>';
     }).join("");
   }
-  el.dataset.mode = "text";
-  el.innerHTML = h;
+  elL.innerHTML = h;
 }
 
 function esc2(x) { return String(x == null ? "" : x).replace(/</g, "&lt;"); }
@@ -716,15 +735,7 @@ function feedRows(s) {
     }).join("");
     h += blk("SCRIPT", "<b>\u201C" + esc2(L.script.title) + "\u201D</b> \u00B7 " +
              (scenes.length || L.script.scenes) + " scenes", sbody,
-             s.stage === "board" || s.stage === "critic");
-  }
-  if (L.board) {
-    var shots = Array.isArray(L.board.shots) ? L.board.shots : [];
-    var bbody = shots.map(function (sh) {
-      return '<div class="scene"><span class="sn">' + String(sh.id).padStart(2, "0") + '</span>' +
-             esc2(sh.prompt) + (sh.subtitle ? ' <span class="ssub">\u201C' + esc2(sh.subtitle) + '\u201D</span>' : "") + '</div>';
-    }).join("");
-    h += blk("BOARD", (shots.length || L.board.shots) + " shots planned", bbody, s.stage === "critic");
+             ["board", "critic", "stills", "approve"].indexOf(s.stage) >= 0);
   }
   if (L.critic) {
     var cbody = (L.critic.verdict ? '<div class="fnote">' + esc2(L.critic.verdict) + '</div>' : "") +
@@ -741,14 +752,6 @@ function feedRows(s) {
           (L.critic.shots ? " \u00B7 " + L.critic.shots + " shots final" : "");
     h += blk("CRITIC", chead, cbody, false);
   }
-  // during approve the big board grid IS the stills — don't duplicate them here
-  if (live.stills && live.stills.length && s.stage !== "stills" && s.stage !== "approve") {
-    h += blk("STILLS", live.stills.length + " frames painted",
-             '<div class="fthumbs">' + live.stills.map(function (st) {
-               return '<img src="/video?p=' + encodeURIComponent(st.img) + '">';
-             }).join("") + "</div>", false);
-  }
-  if (s.stage === "cut" || s.stage === "done") h += blk("FILM", "all shots rendered", "", false);
   $("feed").innerHTML = h;
 }
 
@@ -769,7 +772,7 @@ function showBoard(s) {
       var scene = sc ? ((sh.scene_id !== prevScene ? '<b>' + esc2(sc.setting) + '.</b> ' : "") + esc2(sc.action))
                      : esc2((sh.prompt || "").split(". ").pop().slice(0, 90));
       if (sc) prevScene = sh.scene_id;
-      return '<div class="bcell" data-id="' + sh.id + '"><span class="bn">' + String(sh.id).padStart(2, "0") + '</span>' +
+      return '<div class="bcell" draggable="true" data-id="' + sh.id + '"><span class="bn">' + String(i + 1).padStart(2, "0") + '</span>' +
         '<span class="bx"><button class="bbtn rd" title="redraw">\u21BB</button>' +
         '<button class="bbtn dr" title="remove">\u2715</button></span>' +
         '<div class="bimg">' +
@@ -853,7 +856,39 @@ function wireBoardCells(s) {
           if (d.board) { s.board = d.board; showBoard(s); }
         }).catch(function () {});
     };
+    // drag to reorder — but never start a drag from the ↻/✕ buttons or note field
+    cell.ondragstart = function (e) {
+      if (e.target && e.target.closest && e.target.closest(".bx, .rnote")) { e.preventDefault(); return; }
+      dragId = id; cell.classList.add("dragging");
+      if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
+    };
+    cell.ondragend = function () {
+      cell.classList.remove("dragging");
+      document.querySelectorAll(".bcell.dragover").forEach(function (c) { c.classList.remove("dragover"); });
+    };
+    cell.ondragover = function (e) { e.preventDefault(); cell.classList.add("dragover"); };
+    cell.ondragleave = function () { cell.classList.remove("dragover"); };
+    cell.ondrop = function (e) {
+      e.preventDefault(); cell.classList.remove("dragover");
+      if (dragId != null && dragId !== id) reorderShots(s, dragId, id);
+      dragId = null;
+    };
   });
+}
+
+var dragId = null;
+function reorderShots(s, fromId, toId) {
+  var arr = s.board.shots || [];
+  var fi = -1, ti = -1;
+  arr.forEach(function (x, i) { if (x.id === fromId) fi = i; if (x.id === toId) ti = i; });
+  if (fi < 0 || ti < 0 || fi === ti) return;
+  var moved = arr.splice(fi, 1)[0];
+  arr.splice(ti, 0, moved);
+  showBoard(s);  // renumbers badges by new position
+  // persist the new order so the film is shot/voiced in this sequence
+  fetch("/reorder", { method: "POST", headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ order: arr.map(function (x) { return x.id; }) }) })
+    .catch(function () {});
 }
 
 function poll() {
@@ -870,7 +905,8 @@ function poll() {
     renderLive(s);
     feedRows(s);
     var snap = "stage=" + s.stage + " feed=" + $("feed").innerHTML.length +
-               " live=" + $("live").innerHTML.length + " logKeys=" + Object.keys(s.log || {}).join(",");
+               " liveL=" + $("liveL").innerHTML.length + " liveR=" + $("liveR").innerHTML.length +
+               " logKeys=" + Object.keys(s.log || {}).join(",");
     if (location.search.indexOf("dbg") >= 0) { $("dbg").style.display = "block"; $("dbg").textContent = snap; }
     if (s.stage !== window.__lastStage) {
       window.__lastStage = s.stage;
@@ -1029,6 +1065,17 @@ class H(BaseHTTPRequestHandler):
                 if b.get("estimate"):
                     b["estimate"] = len(b["shots"]) * srconfig.COST_PER_CLIP_USD
                 return self._json(200, {"board": b})
+        if self.path == "/reorder":
+            n = int(self.headers.get("Content-Length", 0))
+            order = json.loads(self.rfile.read(n) or b"{}").get("order") or []
+            with lock:
+                b = state.get("board")
+                if state["stage"] != "approve" or not b:
+                    return self._json(409, {"error": "not at the approval gate"})
+                pos = {sid: i for i, sid in enumerate(order)}
+                b["shots"].sort(key=lambda s: pos.get(s["id"], 1e9))
+                current_approve["edits"]["order"] = list(order)
+                return self._json(200, {"ok": True})
         if self.path == "/redraw":
             n = int(self.headers.get("Content-Length", 0))
             req = json.loads(self.rfile.read(n) or b"{}")
