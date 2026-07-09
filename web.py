@@ -882,10 +882,12 @@ function showBoard(s) {
     var prevScene = null;
     $("shotlist").innerHTML = '<div id="boardgrid" class="v' + opts.fmt + '">' + b.shots.map(function (sh, i) {
       var sc = sceneOf(s, sh);
-      // repeat the setting only when the scene changes — no "same booth ×3" wall
-      var scene = sc ? ((sh.scene_id !== prevScene ? '<b>' + esc2(sc.setting) + '.</b> ' : "") + esc2(sc.action))
-                     : esc2((sh.prompt || "").split(". ").pop().slice(0, 90));
-      if (sc) prevScene = sh.scene_id;
+      // the shot's OWN action (each frame differs) + the scene setting only when
+      // the scene changes — so shots in one scene don't all read identically
+      var setting = (sc && sh.scene_id !== prevScene) ? '<b>' + esc2(sc.setting) + '.</b> ' : "";
+      var act = esc2(sh.action || (sc ? sc.action : "") || (sh.prompt || "").split(". ").pop().slice(0, 90));
+      var scene = setting + act;
+      prevScene = sh.scene_id;
       return '<div class="bcell" draggable="true" data-id="' + sh.id + '"><span class="bn">' + String(i + 1).padStart(2, "0") + '</span>' +
         '<span class="bx"><button class="bbtn rd" title="redraw">\u21BB</button>' +
         '<button class="bbtn dr" title="remove">\u2715</button></span>' +

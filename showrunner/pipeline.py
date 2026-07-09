@@ -180,6 +180,7 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
             "size": size,
             "shots": [{"id": s["id"], "scene_id": s.get("scene_id"),
                        "subtitle": s.get("subtitle", ""),
+                       "action": s.get("action", ""),
                        "prompt": s.get("prompt", ""),
                        "img": stills.get(s["id"], "")} for s in shot_list]}))
         # blocks until the human approves; they may drop and/or reorder shots
