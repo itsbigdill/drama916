@@ -114,6 +114,36 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
                          f"${config.MAX_BUDGET_USD} — trim shots or raise the cap.")
 
     shot_list = shots["shots"]
+
+    # Backend owns the character description (Series-Bible principle): the model
+    # never writes appearance, so wardrobe/face can't drift shot to shot. Compose
+    # each prompt from the LOCKED style + verbatim character visuals + the shot's
+    # own action/emotion/camera/location.
+    style = screenplay.get("style", "")
+    char_visual = {c.get("name"): c.get("visual", "")
+                   for c in screenplay.get("characters", [])}
+    scene_setting = {sc.get("id"): sc.get("setting", "")
+                     for sc in screenplay.get("scenes", [])}
+
+    def compose_prompt(shot: dict) -> str:
+        parts = [style] if style else []
+        for name in (shot.get("characters") or []):
+            v = char_visual.get(name)
+            if v:
+                parts.append(f"{name} — {v.strip().rstrip('.')}.")
+        setting = scene_setting.get(shot.get("scene_id"))
+        tail = ". ".join(x for x in [
+            f"Location: {setting}" if setting else "",
+            shot.get("action") or "", shot.get("emotion") or "",
+            shot.get("camera") or ""] if x)
+        if tail:
+            parts.append(tail.rstrip(".") + ".")
+        return " ".join(parts).strip()
+
+    for s in shot_list:
+        s["prompt"] = compose_prompt(s)
+    save("shots_composed.json", shot_list)
+
     if vertical:  # framing hint must be in place BEFORE stills, so board == film
         for s in shot_list:
             s["prompt"] = "Vertical 9:16 composition, subject centered. " + s["prompt"]
