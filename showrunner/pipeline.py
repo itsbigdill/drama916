@@ -51,6 +51,9 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
         notify("script_live", json.dumps({"kind": kind, "tail": text_so_far[-700:]}))
     screenplay = write_screenplay(brief, ledger, on_delta=script_delta,
                                   thinking=not fast)
+    # Style is not the writer's to invent — force the cast's fixed preset so the
+    # look is predictable (warm 3D family-film) instead of a per-run lottery.
+    screenplay["style"] = config.style_for_cast(cast)
     save("screenplay.json", screenplay)
     console.print(f"[bold]{screenplay['title']}[/] — {len(screenplay['scenes'])} scenes")
     notify("script", json.dumps({"title": screenplay.get("title", ""),
