@@ -332,6 +332,13 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   #meta { font-family: "JetBrains Mono", monospace; font-size: 12px; color: #8B88AC; margin: 4px 2px; }
   .ghost { border: 0; background: transparent; cursor: pointer; padding: 0 8px;
            color: #8B88AC; font: 700 13px -apple-system, system-ui; }
+  .graybtn { width: 100%; margin-top: 12px; border: 0; border-radius: 999px; padding: 15px;
+             cursor: pointer; background: rgba(120,110,160,.12); color: #6B6890;
+             font-family: "Unbounded", system-ui; font-weight: 500; font-size: 13px;
+             letter-spacing: .1em; text-transform: uppercase;
+             transition: background .18s, transform .12s; }
+  .graybtn:hover { background: rgba(120,110,160,.2); }
+  .graybtn:active { transform: scale(.99); }
   #err { display: none; margin-top: 16px; font-size: 14px; color: #E5484D; }
   .bx { position: absolute; top: 10px; right: 10px; display: flex; gap: 7px; z-index: 2;
         opacity: 1; transition: opacity .2s; }
@@ -430,8 +437,8 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
     <div id="shotlist"></div>
     <div class="row" style="margin-top:18px">
       <button id="film" class="go">Film it</button>
-      <button class="ghost" onclick="startOver()">Start over</button>
     </div>
+    <button class="graybtn" onclick="startOver()">Start over</button>
   </div>
 
   <div id="cinema">
