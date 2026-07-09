@@ -381,8 +381,13 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
     background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,.75) 50%, transparent 65%);
     background-size: 240% 100%; animation: frost 2.4s linear infinite; }
   #myvids { display: none; }
-  .vh { font-family: "Unbounded", system-ui; font-weight: 500; font-size: 15px; color: #26244A;
-        padding-bottom: 12px; border-bottom: 1px solid #EDEBF7; }
+  .vh { width: 100%; border: 0; background: transparent; cursor: pointer; text-align: left;
+        font-family: "Unbounded", system-ui; font-weight: 500; font-size: 15px; color: #26244A;
+        display: flex; align-items: center; gap: 8px; padding: 0 0 2px; }
+  .vh #vcount { color: #A9A6C6; font-family: "JetBrains Mono", monospace; font-size: 12px; font-weight: 700; }
+  .vchev { margin-left: auto; color: #8B88AC; font-size: 18px; transition: transform .2s; }
+  #myvids.open .vchev { transform: rotate(180deg); }
+  #myvids.open #vgrid { display: grid !important; }
   #vgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
            gap: 12px; margin-top: 16px; }
   .vcell { position: relative; border-radius: 16px; overflow: hidden; cursor: pointer;
@@ -475,8 +480,8 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   </div><!-- /runPane -->
 
   <div id="myvids" class="glass">
-    <div class="vh">My videos</div>
-    <div id="vgrid"></div>
+    <button class="vh" id="vhToggle">My videos <span id="vcount"></span><span class="vchev">⌄</span></button>
+    <div id="vgrid" style="display:none"></div>
   </div>
 </div><!-- /panes -->
 
@@ -512,6 +517,7 @@ function loadVids() {
     var vids = d.videos || [];
     if (!vids.length) { $("myvids").style.display = "none"; return; }
     $("myvids").style.display = "block";
+    $("vcount").textContent = vids.length;
     $("vgrid").innerHTML = vids.map(function (v, i) {
       return '<div class="vcell" data-i="' + i + '">' +
              (v.poster ? '<img src="/video?p=' + encodeURIComponent(v.poster) + '" loading="lazy">'
@@ -531,6 +537,12 @@ function loadVids() {
   }).catch(function () {});
 }
 loadVids();
+// My videos is collapsed under its header by default; remember the choice
+if (localStorage.getItem("sr_vidsopen") === "1") $("myvids").classList.add("open");
+$("vhToggle").onclick = function () {
+  var open = $("myvids").classList.toggle("open");
+  localStorage.setItem("sr_vidsopen", open ? "1" : "0");
+};
 
 function enterRun() {
   document.getElementById("panes").classList.add("running");
@@ -539,11 +551,33 @@ function enterRun() {
   if (!t0) t0 = Date.now();
   poll();
 }
-// рефреш не втрачає роботу: сервер пам'ятає ран — повертаємось у нього
+// auto-draft: the typed logline + options survive a refresh
+function saveDraft() {
+  try {
+    localStorage.setItem("sr_draft", JSON.stringify(
+      { logline: $("log").value, len: opts.len, cast: opts.cast }));
+  } catch (e) {}
+}
+function restoreDraft() {
+  try {
+    var d = JSON.parse(localStorage.getItem("sr_draft") || "null");
+    if (!d) return;
+    if (d.logline) $("log").value = d.logline;
+    if (d.len) {
+      opts.len = d.len;
+      document.querySelectorAll('.seg[data-k="len"] .chip').forEach(function (c) {
+        c.classList.toggle("on", c.dataset.v === d.len);
+      });
+    }
+    if (d.cast) { opts.cast = d.cast; $("selCast").value = d.cast; $("selCast").classList.toggle("set", !!d.cast); }
+  } catch (e) {}
+}
+// рефреш не втрачає роботу: активний ран повертаємось у нього; інакше — чернетка
 window.addEventListener("load", function () {
   fetch("/status").then(function (r) { return r.json(); }).then(function (s) {
     if (s.stage && s.stage !== "idle") enterRun();
-  });
+    else restoreDraft();
+  }).catch(restoreDraft);
 });
 // drama916: always vertical 9:16, always drama. Cast optional (empty by default
 // so a named character renders as itself instead of being humanized).
@@ -555,13 +589,16 @@ document.querySelectorAll(".seg").forEach(function (seg) {
       seg.querySelectorAll(".chip").forEach(function (x) { x.classList.remove("on"); });
       ch.classList.add("on");
       opts[k] = ch.dataset.v;
+      saveDraft();
     };
   });
 });
 $("selCast").onchange = function () {
   opts.cast = this.value;
   this.classList.toggle("set", !!this.value);
+  saveDraft();
 };
+$("log").addEventListener("input", saveDraft);
 
 // тренд-скаут: живі теми → тап вставляє логлайн
 var trCache = {};
