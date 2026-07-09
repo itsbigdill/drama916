@@ -6,6 +6,7 @@ they double as the visual anchor for image-to-video continuity later.
 
 import base64
 import os
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -18,6 +19,21 @@ from .ledger import Ledger
 
 URL = f"{config.DASHSCOPE_API_BASE}/api/v1/services/aigc/multimodal-generation/generation"
 
+# qwen-image has a tight per-minute quota on fresh accounts. A global minimum
+# gap between ANY two image calls (portraits + stills + rescues) keeps us under
+# it, so generations succeed instead of failing and falling back to duplicate
+# portrait stand-ins. Trades a little speed for real, distinct frames.
+_img_lock = threading.Lock()
+_img_last = [0.0]
+
+
+def _throttle() -> None:
+    with _img_lock:
+        wait = config.IMAGE_MIN_GAP_SEC - (time.time() - _img_last[0])
+        if wait > 0:
+            time.sleep(wait)
+        _img_last[0] = time.time()
+
 
 def data_uri(path: Path) -> str:
     return "data:image/png;base64," + base64.b64encode(path.read_bytes()).decode()
@@ -25,6 +41,7 @@ def data_uri(path: Path) -> str:
 
 def _generate(content: list[dict], size: str, out_path: Path, ledger: Ledger,
               stage: str) -> Path:
+    _throttle()
     r = httpx.post(
         URL,
         headers={"Authorization": f"Bearer {os.environ['DASHSCOPE_API_KEY']}",
@@ -158,7 +175,8 @@ def sketch_all(shots: list[dict], size: str, board_dir: Path, ledger: Ledger,
         done += 1
         progress(done, len(shots), shot["id"], str(out) if ok else "")
 
-    with ThreadPoolExecutor(max_workers=2) as pool:  # image QPS is tight
+    # _throttle() already paces every call, so parallelism just fills the gaps
+    with ThreadPoolExecutor(max_workers=2) as pool:
         list(pool.map(one, shots))
 
     # serial rescue sweeps: sanitized prompt, generous spacing. Two rounds —
@@ -177,6 +195,8 @@ def sketch_all(shots: list[dict], size: str, board_dir: Path, ledger: Ledger,
                 results[shot["id"]] = out
                 progress(done, len(shots), shot["id"], str(out))
 
+    import shutil
+    used_standins: set = set()
     for shot in shots:
         if results[shot["id"]] is not None:
             continue
@@ -184,12 +204,14 @@ def sketch_all(shots: list[dict], size: str, board_dir: Path, ledger: Ledger,
         if not refs:
             continue
         # last real-image resort: this shot's OWN character is a real frame of the
-        # right character — infinitely better than a dashed placeholder
-        import shutil
+        # right character. Prefer a portrait not already used as a stand-in, so
+        # two failed shots don't come out byte-identical (the "two same stills" bug).
+        ref = next((r for r in refs if r not in used_standins), refs[0])
+        used_standins.add(ref)
         out = board_dir / f"shot_{shot['id']:02}.png"
-        shutil.copy(refs[0], out)
+        shutil.copy(ref, out)
         results[shot["id"]] = out
         progress(done, len(shots), shot["id"], str(out))
-        print(f"[storyboard] shot {shot['id']:02}: character portrait stands in as the frame")
+        print(f"[storyboard] shot {shot['id']:02}: {ref.stem} portrait stands in as the frame")
 
     return [results[s["id"]] for s in shots]

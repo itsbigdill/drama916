@@ -22,6 +22,7 @@ TTS_VOICE = "Cherry"              # fallback
 VOICE_BY_GENDER = {"female": "Cherry", "male": "Ethan", "neutral": "Nofish"}
 COST_PER_TTS_LINE_USD = 0.002    # rough; qwen3-tts-flash is per-character and cheap
 COST_PER_STILL_USD = 0.04         # qwen-image-2.0-pro, ще не підтверджено консоллю
+IMAGE_MIN_GAP_SEC = 12            # min seconds between qwen-image calls (QPM guard)
 # happyhorse-1.1 intl list price per OUTPUT second (July 2026): ~0.9 RMB/s 720p,
 # ~1.2 RMB/s 1080p -> USD; promo in console may be ~40% lower
 VIDEO_RATE_PER_SEC = {"720": 0.125, "1080": 0.165}
