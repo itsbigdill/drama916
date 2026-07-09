@@ -22,7 +22,7 @@ PORT = 8090
 # single-run job state, updated by the pipeline's progress callback
 state = {"running": False, "stage": "idle", "detail": "", "video": None,
          "cost": None, "error": None, "title": "", "caption": "", "log": {},
-         "board": None, "run_id": 0,
+         "board": None, "run_id": 0, "input": None,
          "live": {"script": None, "stills": [], "critic": [], "dailies": []}}
 lock = threading.Lock()
 # one approve Event PER RUN: an abandoned run keeps waiting on its own dead
@@ -98,9 +98,14 @@ def start_run(logline: str, dry_run: bool, vertical: bool,
                 if state["run_id"] == my_run:
                     state.update(error=str(e), running=False, stage="error")
 
+    cast_label = {"": "Auto", "realistic human characters": "Real",
+                  "anthropomorphic fruit and vegetable characters": "Fruits",
+                  "animal characters": "Animals",
+                  "everyday objects brought to life as characters": "Objects"}.get(cast, cast or "Auto")
     with lock:
         state.update(running=True, stage="script", detail="", video=None,
                      cost=None, error=None, title="", caption="", log={}, board=None, uid=uid,
+                     input={"logline": logline, "cast": cast_label, "secs": shots_target * 5},
                      live={"script": None, "stills": [], "critic": [], "dailies": []})
     threading.Thread(target=job, daemon=True).start()
 
@@ -239,6 +244,9 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
              padding-bottom: 12px; border-bottom: 1px solid #EDEBF7; margin-bottom: 4px; }
   #runTitle { font-family: "Unbounded", system-ui; font-weight: 500; font-size: 15px;
               color: #26244A; }
+  #runsub { color: #A9A6C6; font-size: 12.5px; margin: 6px 0 2px; line-height: 1.45; }
+  #runsub b { color: #8B88AC; font-weight: 600; }
+  #runsub .rsopts { font-family: "JetBrains Mono", monospace; font-size: 11px; }
   /* during a run only the Production card is shown; Start over (reload) restores */
   #panes.running #formPane { display: none; }
   #panes.running #myvids { display: none !important; }
@@ -471,6 +479,7 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
     <span id="runTitle">Production</span>
     <button class="ghost" onclick="startOver()" title="close">✕</button>
   </div>
+  <div id="runsub"></div>
   <div id="beacon"><span class="core"></span></div>
   <div id="mock"></div>
   <div id="detail"></div>
@@ -1028,6 +1037,8 @@ function poll() {
         : (i === idx && !isApprove) ? " on" : "");
     });
     if (s.title) $("runTitle").textContent = "\u201C" + s.title + "\u201D";
+    if (s.input) $("runsub").innerHTML = "\u201C" + esc2(s.input.logline) + "\u201D " +
+      '<span class="rsopts">\u00B7 ' + esc2(s.input.cast) + ' \u00B7 ' + s.input.secs + 's</span>';
     setMockStage(s.stage);
     renderLive(s);
     feedRows(s);
