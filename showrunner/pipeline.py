@@ -131,7 +131,8 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
             if characters:
                 notify("stills", f"casting 0/{len(characters)}")
                 portraits = cast_all(characters, size, run_dir / "cast", ledger,
-                                     lambda d, n: notify("stills", f"casting {d}/{n}"))
+                                     lambda d, n: notify("stills", f"casting {d}/{n}"),
+                                     style=screenplay.get("style", ""))
             notify("stills", f"0/{len(shot_list)}")
             board_dir = run_dir / "board"
             def still_done(d, n, sid=None, path=""):

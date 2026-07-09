@@ -55,18 +55,23 @@ def generate_still(prompt: str, size: str, out_path: Path, ledger: Ledger,
     return _generate(content, size, out_path, ledger, "stills")
 
 
-def generate_portrait(character: dict, size: str, out_path: Path, ledger: Ledger) -> Path:
-    """One canonical reference portrait per character (the 'character sheet')."""
-    content = [{"text": "Character reference sheet, single character, full body, "
+def generate_portrait(character: dict, size: str, out_path: Path, ledger: Ledger,
+                      style: str = "") -> Path:
+    """One canonical reference portrait per character (the 'character sheet').
+    The style preset MUST lead here too — the portrait is the reference every
+    shot is locked to, so if it renders photoreal the whole film goes photoreal
+    no matter what the shot prompts say."""
+    lead = (style.strip() + " ") if style else ""
+    content = [{"text": f"{lead}Character reference sheet, single character, full body, "
                         "front view, neutral studio background, even lighting: "
                         f"{character.get('name', '')} — {character.get('visual', '')}"}]
     return _generate(content, size, out_path, ledger, "cast_sheet")
 
 
 def cast_all(characters: list[dict], size: str, cast_dir: Path, ledger: Ledger,
-             progress: Callable[[int, int], None]) -> dict[str, Path]:
-    """Portrait per character -> {name: path}. Retries on throttle so a character
-    never silently vanishes for lack of a reference (that dropped Lemon before)."""
+             progress: Callable[[int, int], None], style: str = "") -> dict[str, Path]:
+    """Portrait per character -> {name: path}, in the film's style. Retries on
+    throttle so a character never silently vanishes for lack of a reference."""
     cast_dir.mkdir(parents=True, exist_ok=True)
     done = 0
 
@@ -77,7 +82,7 @@ def cast_all(characters: list[dict], size: str, cast_dir: Path, ledger: Ledger,
         out: Path | None = cast_dir / f"{safe}.png"
         for attempt in range(3):
             try:
-                generate_portrait(ch, size, out, ledger)
+                generate_portrait(ch, size, out, ledger, style=style)
                 break
             except Exception as e:
                 detail = getattr(getattr(e, "response", None), "text", "") or str(e)
