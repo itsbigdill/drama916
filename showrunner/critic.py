@@ -16,9 +16,12 @@ expensive video-generation run. Score 1-10 and list concrete fixes for:
 2) narrative clarity for a first-time viewer reading only subtitles,
 3) renderability (would a t2v model fail this? crowds, hands, physics, text?),
 4) waste (shots that can be cut without losing the story).
+When you reassign a line to a different character, UPDATE that shot's `speaker` and
+`characters` to match — the wrong speaker gets the wrong voice.
 Reply ONLY with JSON:
 {"score": int, "verdict": str, "fixes": [{"shot_id": int, "problem": str, "fix": str}],
- "revised_shots": [...same schema as input, only if score < 8...]}"""
+ "revised_shots": [...same schema as input INCLUDING scene_id, speaker, characters,
+   action — only if score < 8...]}"""
 
 
 def refine(shots: dict, ledger: Ledger, progress=None,

@@ -64,27 +64,35 @@ def generate_portrait(character: dict, size: str, out_path: Path, ledger: Ledger
 
 
 def cast_all(characters: list[dict], size: str, cast_dir: Path, ledger: Ledger,
-             progress: Callable[[int, int], None]) -> list[Path]:
-    """Portraits for the whole cast, in parallel. Failures are logged and skipped."""
+             progress: Callable[[int, int], None]) -> dict[str, Path]:
+    """Portrait per character -> {name: path}. Retries on throttle so a character
+    never silently vanishes for lack of a reference (that dropped Lemon before)."""
     cast_dir.mkdir(parents=True, exist_ok=True)
     done = 0
 
-    def one(ch: dict) -> Path | None:
+    def one(ch: dict) -> tuple[str, Path | None]:
         nonlocal done
-        safe = "".join(c for c in ch.get("name", "x") if c.isalnum()) or "x"
-        out = cast_dir / f"{safe}.png"
-        try:
-            generate_portrait(ch, size, out, ledger)
-        except Exception as e:
-            detail = getattr(getattr(e, "response", None), "text", "") or str(e)
-            print(f"[cast] portrait '{ch.get('name')}' failed: {detail[:200]}")
-            out = None
+        name = ch.get("name", "x")
+        safe = "".join(c for c in name if c.isalnum()) or "x"
+        out: Path | None = cast_dir / f"{safe}.png"
+        for attempt in range(3):
+            try:
+                generate_portrait(ch, size, out, ledger)
+                break
+            except Exception as e:
+                detail = getattr(getattr(e, "response", None), "text", "") or str(e)
+                print(f"[cast] portrait '{name}' attempt {attempt+1} failed: {detail[:160]}")
+                if "Throttling" in detail and attempt < 2:
+                    time.sleep(15)
+                    continue
+                out = None
+                break
         done += 1
         progress(done, len(characters))
-        return out
+        return name, out
 
     with ThreadPoolExecutor(max_workers=2) as pool:  # image QPS is tight
-        return [p for p in pool.map(one, characters) if p]
+        return {name: p for name, p in pool.map(one, characters) if p}
 
 
 def _try_still(prompt: str, size: str, out: Path, ledger: Ledger,
@@ -115,17 +123,27 @@ def _sanitized(prompt: str, ledger: Ledger) -> str:
 
 def sketch_all(shots: list[dict], size: str, board_dir: Path, ledger: Ledger,
                progress: Callable[[int, int], None],
-               refs: list[Path] | None = None) -> list[Path]:
+               portraits: dict[str, Path] | None = None) -> list[Path]:
     """Stills are MANDATORY: the human approves pictures, never dashed placeholders.
-    Ladder per shot: retry w/ backoff → moderation-softened → flash-sanitized;
-    then a serial sweep for stragglers (rate limits love a queue); and as the
-    last real-image resort, the character portrait stands in for the frame."""
+    Each shot is drawn against ONLY the portraits of the characters actually in it
+    (a lemon shot must not be told to keep the banana+peach). Ladder per shot:
+    retry w/ backoff → moderation-softened → flash-sanitized; then serial rescue
+    sweeps; and as a last real-image resort, that shot's own character stands in."""
     board_dir.mkdir(parents=True, exist_ok=True)
+    portraits = portraits or {}
     done = 0
     results: dict[int, Path | None] = {}
 
+    def refs_for(shot: dict) -> list[Path] | None:
+        names = shot.get("characters")
+        if names is None:  # planner didn't tag → fall back to the whole cast
+            return list(portraits.values()) or None
+        r = [portraits[n] for n in names if n in portraits]
+        return r or None  # tagged but no portrait → rely on the text, don't force wrong ones
+
     def one(shot: dict) -> None:
         nonlocal done
+        refs = refs_for(shot)
         out = board_dir / f"shot_{shot['id']:02}.png"
         ok = (_try_still(shot["prompt"], size, out, ledger, refs, f"shot {shot['id']:02} a1")
               or _try_still(shot["prompt"], size, out, ledger, refs, f"shot {shot['id']:02} a2")
@@ -149,21 +167,24 @@ def sketch_all(shots: list[dict], size: str, board_dir: Path, ledger: Ledger,
             time.sleep(20)
             out = board_dir / f"shot_{shot['id']:02}.png"
             clean = _sanitized(shot["prompt"], ledger)
-            if _try_still(clean, size, out, ledger, refs,
+            if _try_still(clean, size, out, ledger, refs_for(shot),
                           f"shot {shot['id']:02} rescue r{round_no}"):
                 results[shot["id"]] = out
                 progress(done, len(shots), shot["id"], str(out))
 
     for shot in shots:
-        if results[shot["id"]] is not None or not refs:
+        if results[shot["id"]] is not None:
             continue
-        # last real-image resort: the hero's portrait IS a real frame of the
+        refs = refs_for(shot)
+        if not refs:
+            continue
+        # last real-image resort: this shot's OWN character is a real frame of the
         # right character — infinitely better than a dashed placeholder
         import shutil
         out = board_dir / f"shot_{shot['id']:02}.png"
         shutil.copy(refs[0], out)
         results[shot["id"]] = out
         progress(done, len(shots), shot["id"], str(out))
-        print(f"[storyboard] shot {shot['id']:02}: portrait stands in as the frame")
+        print(f"[storyboard] shot {shot['id']:02}: character portrait stands in as the frame")
 
     return [results[s["id"]] for s in shots]

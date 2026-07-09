@@ -226,7 +226,9 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
              padding-bottom: 12px; border-bottom: 1px solid #EDEBF7; margin-bottom: 4px; }
   #runTitle { font-family: "Unbounded", system-ui; font-weight: 500; font-size: 15px;
               color: #26244A; }
-  #panes.running #formPane { opacity: .92; }
+  /* during a run only the Production card is shown; Start over (reload) restores */
+  #panes.running #formPane { display: none; }
+  #panes.running #myvids { display: none !important; }
   #beacon { width: 70px; height: 70px; margin: 14px auto 6px; position: relative; display: none; }
   #beacon .core { position: absolute; inset: 21px; border-radius: 50%;
                   background: radial-gradient(circle at 35% 30%, #A897FF, #6C5CE7);

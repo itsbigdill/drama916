@@ -74,7 +74,9 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
     save("shots_draft.json", shots)
     notify("board", json.dumps({"shots": [{"id": s.get("id"),
                                            "subtitle": str(s.get("subtitle", ""))[:70],
-                                           "prompt": str(s.get("prompt", ""))[:110]}
+                                           # show the ACTION, not the identical style prefix
+                                           "prompt": (str(s.get("action", "")).strip()
+                                                      or str(s.get("prompt", "")))[:110]}
                                           for s in shots.get("shots", [])]}))
 
     console.rule("3/5 Critic loop (text-only, cheap)")
@@ -124,12 +126,12 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
             # character sheets first: one canonical portrait per character, then
             # every still is generated AGAINST those portraits → same faces across
             # the whole board (and, via i2v, across the whole film)
-            characters = screenplay.get("characters", [])[:3]
-            refs: list = []
+            characters = screenplay.get("characters", [])[:4]
+            portraits: dict = {}
             if characters:
                 notify("stills", f"casting 0/{len(characters)}")
-                refs = cast_all(characters, size, run_dir / "cast", ledger,
-                                lambda d, n: notify("stills", f"casting {d}/{n}"))
+                portraits = cast_all(characters, size, run_dir / "cast", ledger,
+                                     lambda d, n: notify("stills", f"casting {d}/{n}"))
             notify("stills", f"0/{len(shot_list)}")
             board_dir = run_dir / "board"
             def still_done(d, n, sid=None, path=""):
@@ -140,7 +142,7 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
                 if path:
                     notify("still_live", json.dumps({"id": sid, "img": path}))
             paths = sketch_all(shot_list, size, board_dir, ledger, still_done,
-                               refs=refs or None)
+                               portraits=portraits or None)
             stills = {s["id"]: str(p) for s, p in zip(shot_list, paths) if p}
         notify("approve", json.dumps({
             "estimate": 0 if dry_run else estimate,
@@ -228,7 +230,10 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
                          for sc in screenplay.get("scenes", [])}
 
         def voice_for(shot: dict) -> str:
-            gender = char_gender.get(scene_speaker.get(shot.get("scene_id")), "neutral")
+            # the shot's own speaker wins (a scene can hold two speakers across
+            # its shots); fall back to the scene's speaker only if untagged
+            speaker = shot.get("speaker") or scene_speaker.get(shot.get("scene_id"))
+            gender = char_gender.get(speaker, "neutral")
             return config.VOICE_BY_GENDER.get(gender, config.TTS_VOICE)
 
         n_lines = sum(1 for s in shot_list if str(s.get("subtitle", "")).strip())
