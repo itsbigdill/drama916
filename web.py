@@ -408,12 +408,37 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
                   border-bottom: 8px solid transparent; }
   .foot { margin-top: 26px; font-size: 12px; }
   .foot a { color: #A9A6C6; }
+  #tabs { display: flex; gap: 6px; margin-bottom: 20px; }
+  .tab { border: 0; background: transparent; cursor: pointer; padding: 8px 16px; border-radius: 999px;
+         font-family: "JetBrains Mono", monospace; font-size: 12.5px; font-weight: 700; letter-spacing: .04em;
+         color: #8B88AC; transition: background .18s, color .18s; }
+  .tab:hover { color: #7C3AED; }
+  .tab.on { background: #F3E8FF; color: #7C3AED; box-shadow: inset 0 0 0 1px #D8B4FE; }
+  .tcount { margin-left: 6px; color: #B4B1CF; font-size: 11px; }
+  .tab.on .tcount { color: #A78BDF; }
+  .tabempty { color: #A9A6C6; font-size: 14px; padding: 26px 4px; text-align: center; line-height: 1.5; }
+  #dgrid { display: flex; flex-direction: column; gap: 8px; }
+  .dcell { display: flex; align-items: center; gap: 10px; padding: 13px 15px; border-radius: 14px;
+           background: rgba(255,255,255,.5); border: 1px solid #EDE9F9; cursor: pointer;
+           transition: border-color .18s, background .18s; }
+  .dcell:hover { border-color: #D8B4FE; background: #FAF7FF; }
+  .dtxt { flex: 1; min-width: 0; font-size: 14px; color: #33314E;
+          overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ddel { border: 0; background: transparent; cursor: pointer; color: #B4B1CF; font-size: 13px; flex: 0 0 auto; }
+  .ddel:hover { color: #E5484D; }
 </style>
 <body>
 <div class="wordmark">drama<span class="dot">916</span></div>
 
 <div id="panes">
   <div id="formPane" class="glass">
+  <div id="tabs">
+    <button class="tab on" data-t="new">New</button>
+    <button class="tab" data-t="drafts">Drafts<span id="dcount" class="tcount"></span></button>
+    <button class="tab" data-t="videos">Videos<span id="vcount" class="tcount"></span></button>
+  </div>
+
+  <div id="tab-new">
   <textarea id="log" placeholder="One line. A whole film."></textarea>
   <div class="trhead">
     <span class="ol">Trending</span>
@@ -429,6 +454,16 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
     <button id="go" class="go">Action</button>
   </div>
   <div id="formErr" style="display:none;margin-top:12px;font-size:14px;color:#E5484D"></div>
+  </div><!-- /tab-new -->
+
+  <div id="tab-drafts" style="display:none">
+    <div id="dgrid"></div>
+    <div id="dempty" class="tabempty">Nothing saved yet. Start a line — it's kept here automatically.</div>
+  </div>
+  <div id="tab-videos" style="display:none">
+    <div id="vgrid"></div>
+    <div id="vempty" class="tabempty">No films yet. Your finished films land here.</div>
+  </div>
   </div><!-- /formPane -->
 
   <div id="runPane" class="glass runglass">
@@ -479,10 +514,6 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   <div id="err"></div>
   </div><!-- /runPane -->
 
-  <div id="myvids" class="glass">
-    <button class="vh" id="vhToggle">My videos <span id="vcount"></span><span class="vchev">⌄</span></button>
-    <div id="vgrid" style="display:none"></div>
-  </div>
 </div><!-- /panes -->
 
 <div class="foot"><a href="https://www.qwencloud.com">Qwen + HappyHorse on Alibaba Cloud</a> · <span id="build">BUILD_STAMP</span></div>
@@ -515,9 +546,8 @@ if (!uid) { uid = Math.random().toString(36).slice(2) + Date.now().toString(36);
 function loadVids() {
   fetch("/videos?uid=" + encodeURIComponent(uid)).then(function (r) { return r.json(); }).then(function (d) {
     var vids = d.videos || [];
-    if (!vids.length) { $("myvids").style.display = "none"; return; }
-    $("myvids").style.display = "block";
-    $("vcount").textContent = vids.length;
+    $("vcount").textContent = vids.length ? vids.length : "";
+    $("vempty").style.display = vids.length ? "none" : "block";
     $("vgrid").innerHTML = vids.map(function (v, i) {
       return '<div class="vcell" data-i="' + i + '">' +
              (v.poster ? '<img src="/video?p=' + encodeURIComponent(v.poster) + '" loading="lazy">'
@@ -537,12 +567,58 @@ function loadVids() {
   }).catch(function () {});
 }
 loadVids();
-// My videos is collapsed under its header by default; remember the choice
-if (localStorage.getItem("sr_vidsopen") === "1") $("myvids").classList.add("open");
-$("vhToggle").onclick = function () {
-  var open = $("myvids").classList.toggle("open");
-  localStorage.setItem("sr_vidsopen", open ? "1" : "0");
-};
+
+// New / Drafts / Videos tabs live inside the form card
+function switchTab(t) {
+  upsertDraft();  // keep whatever's currently typed before we leave New
+  document.querySelectorAll(".tab").forEach(function (b) { b.classList.toggle("on", b.dataset.t === t); });
+  ["new", "drafts", "videos"].forEach(function (x) {
+    $("tab-" + x).style.display = x === t ? "block" : "none";
+  });
+  if (t === "drafts") renderDrafts();
+}
+document.querySelectorAll(".tab").forEach(function (b) {
+  b.onclick = function () { switchTab(b.dataset.t); };
+});
+
+// Drafts: a list of your saved loglines (kept automatically as you write/run)
+function getDrafts() { try { return JSON.parse(localStorage.getItem("sr_drafts") || "[]"); } catch (e) { return []; } }
+function setDrafts(a) { try { localStorage.setItem("sr_drafts", JSON.stringify(a.slice(0, 12))); } catch (e) {} }
+function upsertDraft() {
+  var line = $("log").value.trim();
+  if (line.length < 4) return;
+  var a = getDrafts().filter(function (x) { return x.logline !== line; });
+  a.unshift({ logline: line, len: opts.len, cast: opts.cast });
+  setDrafts(a);
+  $("dcount").textContent = a.length;
+}
+function renderDrafts() {
+  var a = getDrafts();
+  $("dcount").textContent = a.length ? a.length : "";
+  $("dempty").style.display = a.length ? "none" : "block";
+  $("dgrid").innerHTML = a.map(function (x, i) {
+    return '<div class="dcell" data-i="' + i + '"><span class="dtxt">' + esc2(x.logline) + '</span>' +
+           '<button class="ddel" data-i="' + i + '" title="delete">✕</button></div>';
+  }).join("");
+  $("dgrid").querySelectorAll(".dcell").forEach(function (c) {
+    c.onclick = function (e) {
+      if (e.target.classList.contains("ddel")) return;
+      var x = getDrafts()[+c.dataset.i]; if (!x) return;
+      $("log").value = x.logline;
+      if (x.len) { opts.len = x.len; document.querySelectorAll('.seg[data-k="len"] .chip').forEach(function (ch) { ch.classList.toggle("on", ch.dataset.v === x.len); }); }
+      if (x.cast != null) { opts.cast = x.cast; $("selCast").value = x.cast; $("selCast").classList.toggle("set", !!x.cast); }
+      saveDraft();
+      switchTab("new");
+    };
+  });
+  $("dgrid").querySelectorAll(".ddel").forEach(function (b) {
+    b.onclick = function (e) {
+      e.stopPropagation();
+      var a2 = getDrafts(); a2.splice(+b.dataset.i, 1); setDrafts(a2); renderDrafts();
+    };
+  });
+}
+renderDrafts();
 
 function enterRun() {
   document.getElementById("panes").classList.add("running");
@@ -679,6 +755,7 @@ $("go").onclick = function () {
     return;
   }
   $("log").classList.remove("invalid");
+  upsertDraft();  // keep this idea in Drafts
   $("go").disabled = true; $("log").disabled = true; t0 = Date.now();
   fetch("/run", { method: "POST", headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ logline: logline, vertical: true, uid: uid,
