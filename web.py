@@ -911,13 +911,18 @@ function showBoard(s) {
   }
   $("film").textContent = b.estimate ? "Film it \u00B7 ~$" + Math.round(b.estimate) : "Film it";
   $("film").onclick = function () {
-    this.disabled = true;
-    t0 = Date.now();
-    fetch("/approve", { method: "POST" }).then(function () {
+    var btn = this; btn.disabled = true;
+    fetch("/approve", { method: "POST" }).then(function (r) {
+      if (!r.ok) {  // the run is gone (e.g. server restarted) \u2014 don't hang on a dead board
+        reportErr("this run ended \u2014 reloading");
+        setTimeout(function () { location.reload(); }, 900);
+        return;
+      }
+      t0 = Date.now();
       $("board").style.display = "none";
       $("beacon").style.display = "block"; $("mock").style.display = "block";
       poll();
-    });
+    }).catch(function () { btn.disabled = false; reportErr("could not start filming \u2014 server unreachable"); });
   };
   $("board").style.display = "block";
 }
@@ -1010,6 +1015,12 @@ function reorderShots(s, fromId, toId) {
 function poll() {
   fetch("/status").then(function (r) { return r.json(); }).then(function (s) {
    try {
+    // run vanished (server restarted / reset) while we're showing it — recover
+    // to a clean form instead of sitting in a stale, empty, stuck state forever
+    if (s.stage === "idle" && document.getElementById("panes").classList.contains("running")) {
+      location.reload();
+      return;
+    }
     var isApprove = s.stage === "approve";
     var idx = isApprove ? 4 : ORDER.indexOf(s.stage);
     document.querySelectorAll(".step").forEach(function (el, i) {
