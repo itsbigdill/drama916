@@ -15,6 +15,10 @@ Reply ONLY with JSON:
 {"title": str, "logline": str, "style": str,  # one reusable visual style sentence
  "caption": str,  # TikTok caption: one hook line under 100 chars, then 4 hashtags
  "characters": [{"name": str, "gender": "male"|"female"|"neutral", "visual": str}],
+ # visual MUST be visually unambiguous — a simple, single-reading body plan.
+ # No hybrid or paradoxical anatomy ("a seed for an eye", "half-human half-X",
+ # "upper body human-like"): an image model resolves ambiguity differently in
+ # every shot and the character falls apart. Distinct colors/props are welcome.
  "scenes": [{"id": int, "setting": str, "action": str,
              "speaker": str,     # the character NAME who speaks this scene's line
              "subtitle": str,    # their spoken line (short, punchy, emotional — this is voiced)

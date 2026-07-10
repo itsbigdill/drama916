@@ -118,7 +118,8 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   * { box-sizing: border-box; }
   body { margin: 0; min-height: 100vh; font: 16px/1.5 -apple-system, system-ui;
          color: #1E1B39; background: #EFE9FF; display: flex; flex-direction: column;
-         align-items: center; padding: 48px 18px; overflow-x: hidden; }
+         align-items: center; padding: 56px 18px; overflow-x: hidden; }
+  @media (max-width: 680px) { body { padding: 26px 12px; } }
   body::before { content: ""; position: fixed; inset: 0; z-index: -1;
     background:
       radial-gradient(60% 45% at 8% 0%, rgba(168,85,247,.34), transparent 60%),
@@ -139,7 +140,9 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   .bcell:active { cursor: grabbing; }
   .bcell.dragging { opacity: .35; }
   .bcell.dragover { outline: 2px dashed #A855F7; outline-offset: 3px; }
-  .glass { width: 100%; border-radius: 30px; padding: 30px 30px 32px;
+  .glass { width: 100%; border-radius: 32px; padding: 36px 36px 38px; }
+  @media (max-width: 680px) { .glass { padding: 24px 18px 26px; border-radius: 26px; } }
+  .glass { 
            background: rgba(255,255,255,.58);
            border: 1px solid rgba(255,255,255,.65);
            backdrop-filter: blur(34px) saturate(1.5); -webkit-backdrop-filter: blur(34px) saturate(1.5);
@@ -147,8 +150,8 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
                        inset 0 1px 0 rgba(255,255,255,.85); }
   textarea { width: 100%; border: 1px solid transparent; resize: none;
              background: rgba(255,255,255,.55);
-             border-radius: 18px; padding: 16px 18px; font-size: 17px; line-height: 1.5;
-             font-family: inherit; color: inherit; outline: none; min-height: 74px;
+             border-radius: 20px; padding: 18px 20px; font-size: 18px; line-height: 1.55;
+             font-family: inherit; color: inherit; outline: none; min-height: 96px;
              box-shadow: inset 0 0 0 1px rgba(168,85,247,.14);
              transition: border-color .2s, box-shadow .25s; }
   textarea:focus { border-color: #C79BFF; box-shadow: 0 0 0 4px rgba(168,85,247,.16); }
@@ -156,15 +159,15 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   textarea.invalid { border-color: #E5484D; box-shadow: 0 0 0 4px rgba(229,72,77,.14);
                      animation: shake .35s ease; }
   @keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
-  .row { display: flex; gap: 10px; align-items: stretch; margin-top: 16px; }
-  .trhead { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; }
+  .row { display: flex; gap: 10px; align-items: stretch; margin-top: 22px; }
+  .trhead { display: flex; justify-content: space-between; align-items: center; margin-top: 22px; }
   .trtabs { display: inline-flex; border: 1px solid #E7E5F3; border-radius: 10px; overflow: hidden; background: #F4F3FA; }
   .trtab { border: 0; background: transparent; cursor: pointer; padding: 5px 12px;
            font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 700; color: #8B88AC; }
   .trtab.on { background: #F3E8FF; color: #7C3AED; }
   .trrow { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
   .tpill { background: #F4F3FA; border: 1px solid #E7E5F3; border-radius: 999px;
-           padding: 8px 15px; cursor: pointer; font-size: 13px; font-weight: 600;
+           padding: 10px 18px; cursor: pointer; font-size: 13.5px; font-weight: 600;
            color: #454363; transition: transform .1s, border-color .2s, background .2s; }
   .tpill:hover { border-color: #D8B4FE; background: #F3E8FF; color: #7C3AED; }
   .tpill:active { transform: scale(.95); }
@@ -172,7 +175,7 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
            border: 1px solid #E7E5F3; animation: skel 1.1s ease-in-out infinite; }
   @keyframes skel { 50% { opacity: .45; } }
   textarea.flash { border-color: #B9AFFF; box-shadow: 0 0 0 4px rgba(108,92,231,.18); }
-  .opts { display: flex; flex-wrap: wrap; gap: 12px 18px; margin-top: 14px; }
+  .opts { display: flex; flex-wrap: wrap; gap: 16px 26px; margin-top: 20px; }
   .opt { display: flex; flex-direction: column; gap: 6px; }
   .ol { font-family: "JetBrains Mono", monospace; font-size: 10px; font-weight: 700;
         letter-spacing: .14em; text-transform: uppercase; color: #B4B1CF; padding-left: 3px; }
@@ -197,7 +200,7 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   .sel select:focus { border-color: #C79BFF; box-shadow: 0 0 0 4px rgba(168,85,247,.14); }
   /* an active (non-Auto) choice reads as "on", matching the chips */
   .sel select.set { color: #7C3AED; background: #F3E8FF; border-color: #D8B4FE; }
-  .go { flex: 1; border: 0; border-radius: 999px; padding: 16px; cursor: pointer;
+  .go { flex: 1; border: 0; border-radius: 999px; padding: 18px; cursor: pointer;
         display: inline-flex; align-items: center; justify-content: center; gap: 12px;
         background: linear-gradient(96deg, #E879F9 0%, #A855F7 48%, #7C3AED 100%);
         color: #FFFFFF; font-family: "Unbounded", system-ui; font-weight: 800;
@@ -230,11 +233,7 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   #liveL:not(:empty) { margin-bottom: 14px; }
 
 
-  .runglass { background: rgba(252,252,255,.92);
-              box-shadow: 0 24px 70px rgba(90,70,200,.16), 0 3px 10px rgba(34,33,58,.05),
-                          inset 0 1px 0 #FFFFFF; }
-  .runhead { display: flex; justify-content: space-between; align-items: center;
-             padding-bottom: 12px; border-bottom: 1px solid #EDEBF7; margin-bottom: 4px; }
+
   #runTitle { font-family: "Unbounded", system-ui; font-weight: 500; font-size: 15px;
               color: #26244A; }
   #runsub { color: #A9A6C6; font-size: 12.5px; margin: 6px 0 2px; line-height: 1.45; }
@@ -252,8 +251,11 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   @keyframes ring { 0% { transform: scale(.55); opacity: 1; } 100% { transform: scale(1.35); opacity: 0; } }
   #mock { display: none; text-align: center; font-family: "JetBrains Mono", monospace;
           font-size: 12px; color: #A9A6C6; min-height: 17px; margin-bottom: 4px; }
-  #boardgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-               gap: 20px; margin-top: 8px; }
+  #boardgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+               gap: 26px 22px; margin-top: 8px; }
+  @media (max-width: 680px) {
+    #boardgrid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px 12px; }
+  }
   .bcell { position: relative; }
   .bcell img { width: 100%; border-radius: 16px; display: block;
                box-shadow: 0 14px 34px rgba(90,70,200,.20); }
@@ -276,7 +278,7 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
                color: #5646D6; font-family: "JetBrains Mono", monospace; font-size: 11px;
                font-weight: 700; border-radius: 9px; padding: 3px 9px;
                box-shadow: 0 2px 8px rgba(34,33,58,.18); }
-  .bcell .bs { font-size: 15px; color: #33314E; font-weight: 600; margin-top: 12px; line-height: 1.4; }
+  .bcell .bs { font-size: 16px; color: #33314E; font-weight: 600; margin-top: 14px; line-height: 1.45; }
   #shotlist { margin-top: 14px; }
   .shot { display: flex; gap: 12px; align-items: baseline; padding: 9px 4px;
           border-top: 1px solid #EDEBF7; }
@@ -315,8 +317,8 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   .fblk .fv { font-size: 14.5px; color: #33314E; }
   .fblk .fv b { font-family: "Unbounded", system-ui; font-weight: 500; font-size: 13.5px; }
   .fbody { padding: 4px 4px 16px 40px; }
-  .scene { font-size: 13px; color: #55536E; padding: 8px 0; border-top: 1px dashed #EFEDF8;
-           line-height: 1.5; }
+  .scene { font-size: 13.5px; color: #55536E; padding: 10px 0; border-top: 1px dashed #EFEDF8;
+           line-height: 1.6; }
   .scene:first-child { border-top: 0; }
   .scene .sn { font-family: "JetBrains Mono", monospace; font-size: 10.5px; font-weight: 700;
                color: #A08CFF; margin-right: 7px; }
@@ -355,13 +357,7 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   #meta { font-family: "JetBrains Mono", monospace; font-size: 12px; color: #8B88AC; margin: 4px 2px; }
   .ghost { border: 0; background: transparent; cursor: pointer; padding: 0 8px;
            color: #8B88AC; font: 700 13px -apple-system, system-ui; }
-  .graybtn { width: 100%; margin-top: 12px; border: 0; border-radius: 999px; padding: 15px;
-             cursor: pointer; background: rgba(120,110,160,.12); color: #6B6890;
-             font-family: "Unbounded", system-ui; font-weight: 500; font-size: 13px;
-             letter-spacing: .1em; text-transform: uppercase;
-             transition: background .18s, transform .12s; }
-  .graybtn:hover { background: rgba(120,110,160,.2); }
-  .graybtn:active { transform: scale(.99); }
+
   #err { display: none; margin-top: 16px; font-size: 14px; color: #E5484D; }
   .bx { position: absolute; top: 10px; right: 10px; display: flex; gap: 7px; z-index: 2;
         opacity: 1; transition: opacity .2s; }
@@ -384,7 +380,7 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   .rgo { flex: 0 0 auto; width: 34px; border: 0; border-radius: 11px; cursor: pointer;
          background: linear-gradient(180deg, #7A5CFF, #5B45E0); color: #FFF; font-size: 15px;
          box-shadow: 0 6px 16px rgba(108,92,231,.4); }
-  .bscene { font-size: 12.5px; line-height: 1.5; color: #9490B4; margin-top: 6px; }
+  .bscene { font-size: 13px; line-height: 1.55; color: #9490B4; margin-top: 7px; }
   .bscene b { color: #6B6890; font-weight: 600; }
   .bcell.rf img { filter: saturate(.35) brightness(1.12) blur(2px); opacity: .68; }
   .bcell.rf::after { content: ""; position: absolute; inset: 0; border-radius: inherit;
@@ -436,10 +432,10 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   #stScript { display: none; border: 0; border-radius: 999px; padding: 6px 14px; cursor: pointer;
               background: #F3E8FF; color: #7C3AED;
               font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 700; }
-  #stBody { flex: 1; display: grid; grid-template-columns: 300px minmax(0, 1fr); overflow: hidden; }
-  #stLeft { overflow-y: auto; padding: 20px 22px; background: rgba(255,255,255,.42);
+  #stBody { flex: 1; display: grid; grid-template-columns: 320px minmax(0, 1fr); overflow: hidden; }
+  #stLeft { overflow-y: auto; padding: 26px 28px; background: rgba(255,255,255,.42);
             border-right: 1px solid rgba(255,255,255,.7); }
-  #stCanvas { overflow-y: auto; padding: 26px 32px; }
+  #stCanvas { overflow-y: auto; padding: 32px 40px; }
   #stInner { max-width: 1400px; margin: 0 auto; }
   #stStage { text-align: center; }
   #stStage #beacon { margin-top: 9vh; }
@@ -460,15 +456,22 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   @media (max-width: 680px) {
     #stBody { grid-template-columns: 1fr; }
     #stLeft { display: none; }
-    #studio.showleft #stLeft { display: block; position: fixed; top: 50px; bottom: 0; left: 0;
-      width: 84%; z-index: 6; background: rgba(250,248,255,.97);
+    #studio.showleft #stLeft { display: block; position: fixed; top: 52px; bottom: 0; left: 0;
+      width: 86%; z-index: 6; background: rgba(250,248,255,.97);
       box-shadow: 20px 0 60px rgba(60,30,120,.18); }
     #stScript { display: inline-flex; }
+    #stTop { gap: 10px; padding: 10px 14px; }
     #stTop #runsub, #stTop #steps { display: none; }
+    #stCanvas { padding: 18px 14px; }
+    #stBar { padding: 10px 14px; }
+    #barInfo { display: none; }
+    .barbtns { margin-left: 0; width: 100%; }
+    .barbtns .go, .barbtns .gray2 { flex: 1; padding: 0 12px; }
+    #stBar .go { padding: 14px 12px; }
   }
-  #tabs { display: flex; gap: 6px; margin-bottom: 20px; }
-  .tab { border: 0; background: transparent; cursor: pointer; padding: 8px 16px; border-radius: 999px;
-         font-family: "JetBrains Mono", monospace; font-size: 12.5px; font-weight: 700; letter-spacing: .04em;
+  #tabs { display: flex; gap: 8px; margin-bottom: 26px; }
+  .tab { border: 0; background: transparent; cursor: pointer; padding: 10px 20px; border-radius: 999px;
+         font-family: "JetBrains Mono", monospace; font-size: 13px; font-weight: 700; letter-spacing: .04em;
          color: #8B88AC; transition: background .18s, color .18s; }
   .tab:hover { color: #7C3AED; }
   .tab.on { background: #F3E8FF; color: #7C3AED; box-shadow: inset 0 0 0 1px #D8B4FE; }
