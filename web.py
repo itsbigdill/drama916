@@ -167,7 +167,12 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   .trtab.on { background: #F3E8FF; color: #7C3AED; }
   .trrow { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
   .tpill { background: #F4F3FA; border: 1px solid #E7E5F3; border-radius: 999px;
-           padding: 10px 18px; cursor: pointer; font-size: 13.5px; font-weight: 600;
+           padding: 10px 18px; cursor: pointer; font-size: 13.5px; font-weight: 600; }
+  @media (max-width: 680px) {
+    .tpill { padding: 8px 13px; font-size: 12.5px; }
+    textarea { min-height: 116px; font-size: 17px; }
+  }
+  .tpill { 
            color: #454363; transition: transform .1s, border-color .2s, background .2s; }
   .tpill:hover { border-color: #D8B4FE; background: #F3E8FF; color: #7C3AED; }
   .tpill:active { transform: scale(.95); }
@@ -461,7 +466,10 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
       box-shadow: 20px 0 60px rgba(60,30,120,.18); }
     #stScript { display: inline-flex; }
     #stTop { gap: 10px; padding: 10px 14px; }
-    #stTop #runsub, #stTop #steps { display: none; }
+    /* enterRun sets inline display:flex on #steps — must out-rank it here */
+    #stTop #runsub, #stTop #steps { display: none !important; }
+    #stTop #runTitle { font-size: 13px; white-space: nowrap; overflow: hidden;
+                       text-overflow: ellipsis; max-width: 42vw; }
     #stCanvas { padding: 18px 14px; }
     #stBar { padding: 10px 14px; }
     #barInfo { display: none; }
