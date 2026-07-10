@@ -236,6 +236,11 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
             color: #8B88AC; margin-top: 12px; min-height: 18px; }
   #liveR:not(:empty) { margin-bottom: 14px; }
   #liveL:not(:empty) { margin-bottom: 14px; }
+  #panelText:not(:empty) { background: rgba(255,255,255,.5); border: 1px solid rgba(255,255,255,.75);
+    border-radius: 20px; padding: 20px 26px; margin-bottom: 14px; }
+  #panelText .ptitle { font-family: "Unbounded", system-ui; font-weight: 500; font-size: 16px;
+    color: #26244A; margin-bottom: 10px; }
+  #panelText .scene { font-size: 14px; }
 
 
 
@@ -431,17 +436,24 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   .stmark { font-family: "Unbounded", system-ui; font-weight: 800; font-size: 15px; color: #241A47; }
   #stTop #runsub { flex: 1; min-width: 0; margin: 0; overflow: hidden; text-overflow: ellipsis;
                    white-space: nowrap; }
-  #stTop #steps { display: flex; gap: 20px; margin: 0; flex: 0 0 auto; }
-  #stTop .step { flex: 0 0 auto; font-size: 9px; letter-spacing: .12em; }
-  #stTop .step .d { width: 9px; height: 9px; margin: 0 auto 4px; }
-  #stScript { display: none; border: 0; border-radius: 999px; padding: 6px 14px; cursor: pointer;
-              background: #F3E8FF; color: #7C3AED;
-              font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 700; }
-  #stBody { flex: 1; display: grid; grid-template-columns: 320px minmax(0, 1fr); overflow: hidden; }
-  #stLeft { overflow-y: auto; padding: 26px 28px; background: rgba(255,255,255,.42);
-            border-right: 1px solid rgba(255,255,255,.7); }
-  #stCanvas { overflow-y: auto; padding: 32px 40px; }
-  #stInner { max-width: 1400px; margin: 0 auto; }
+  #stBody { flex: 1; display: flex; overflow: hidden; }
+  #stCanvas { flex: 1; overflow-y: auto; padding: 26px 40px 40px; }
+  #stInner { max-width: 1100px; margin: 0 auto; }
+  /* breadcrumb stage nav: done/live are clickable pages, future is muted */
+  #crumbs { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-bottom: 22px; }
+  .crumb { border: 0; cursor: pointer; border-radius: 999px; padding: 8px 16px;
+           font-family: "JetBrains Mono", monospace; font-size: 12px; font-weight: 700;
+           letter-spacing: .04em; background: #F3E8FF; color: #7C3AED;
+           transition: background .18s, transform .12s; }
+  .crumb:hover { transform: translateY(-1px); }
+  .crumb.live { background: linear-gradient(96deg, #E879F9, #7C3AED); color: #FFF;
+                box-shadow: 0 8px 22px rgba(168,85,247,.35); }
+  .crumb.live .cdot { display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+                      background: #FFF; margin-right: 7px; animation: pulse 1.2s ease-in-out infinite; }
+  .crumb.viewing { background: #FFFFFF; box-shadow: inset 0 0 0 2px #C084FC; }
+  .crumb.future { background: transparent; color: #B9B7D2; cursor: default; }
+  .crumb.future:hover { transform: none; }
+  .csep { color: #C6C3DE; font-size: 12px; }
   #stStage { text-align: center; }
   #stStage #beacon { margin-top: 9vh; }
   #stBar { display: none; align-items: center; gap: 14px; padding: 12px 22px; flex: 0 0 auto;
@@ -459,18 +471,12 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
            letter-spacing: .12em; text-transform: uppercase; transition: background .18s; }
   .gray2:hover { background: rgba(120,110,160,.24); }
   @media (max-width: 680px) {
-    #stBody { grid-template-columns: 1fr; }
-    #stLeft { display: none; }
-    #studio.showleft #stLeft { display: block; position: fixed; top: 52px; bottom: 0; left: 0;
-      width: 86%; z-index: 6; background: rgba(250,248,255,.97);
-      box-shadow: 20px 0 60px rgba(60,30,120,.18); }
-    #stScript { display: inline-flex; }
     #stTop { gap: 10px; padding: 10px 14px; }
-    /* enterRun sets inline display:flex on #steps — must out-rank it here */
-    #stTop #runsub, #stTop #steps { display: none !important; }
+    #stTop #runsub { display: none !important; }
     #stTop #runTitle { font-size: 13px; white-space: nowrap; overflow: hidden;
-                       text-overflow: ellipsis; max-width: 42vw; }
-    #stCanvas { padding: 18px 14px; }
+                       text-overflow: ellipsis; max-width: 58vw; }
+    #stCanvas { padding: 16px 14px; }
+    .crumb { padding: 7px 12px; font-size: 11px; }
     #stBar { padding: 10px 14px; }
     #barInfo { display: none; }
     .barbtns { margin-left: 0; width: 100%; }
@@ -542,29 +548,19 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
     <span class="stmark">drama<span class="dot">916</span></span>
     <span id="runTitle">Production</span>
     <span id="runsub"></span>
-    <button id="stScript" onclick="document.getElementById('studio').classList.toggle('showleft')">Script</button>
-    <div id="steps">
-      <div class="step" data-s="script"><div class="d"></div>SCRIPT</div>
-      <div class="step" data-s="board"><div class="d"></div>BOARD</div>
-      <div class="step" data-s="critic"><div class="d"></div>CRITIC</div>
-      <div class="step" data-s="stills"><div class="d"></div>STILLS</div>
-      <div class="step" data-s="film"><div class="d"></div>FILM</div>
-      <div class="step" data-s="cut"><div class="d"></div>CUT</div>
-    </div>
     <button class="ghost" onclick="startOver()" title="close">✕</button>
   </div>
 
   <div id="stBody">
-    <div id="stLeft">
-      <div id="liveL"></div>
-      <div id="feed"></div>
-    </div>
     <div id="stCanvas"><div id="stInner">
+      <div id="crumbs"></div>
       <div id="stStage">
         <div id="beacon"><span class="core"></span></div>
         <div id="mock"></div>
         <div id="detail"></div>
       </div>
+      <div id="panelText"></div>
+      <div id="liveL"></div>
       <div id="liveR"></div>
       <div id="board" style="display:none"><div id="shotlist"></div></div>
       <div id="cinema">
@@ -698,7 +694,6 @@ renderDrafts();
 
 function enterRun() {
   document.body.classList.add("studio");
-  $("steps").style.display = "flex"; $("feed").style.display = "block";
   $("beacon").style.display = "block"; $("mock").style.display = "block";
   if (!t0) t0 = Date.now();
   poll();
@@ -877,69 +872,133 @@ function syncThumbs(el, mode, label, wrapCls, cellWrap, urls) {
     }
   });
 }
-function renderLive(s) {
-  var L = s.live || {}, elR = $("liveR"), elL = $("liveL");
-  // RIGHT column: images (stills appearing, then the ghost grid while filming)
-  if (s.stage === "stills" && L.stills && L.stills.length) {
-    syncThumbs(elR, "stills", "storyboard", "lthumbs", false,
-               L.stills.map(function (st) { return st.img; }));
-  } else if ((s.stage === "film" || s.stage === "cut") && s.board &&
-      (s.board.shots || []).some(function (sh) { return sh.img; })) {
-    syncThumbs(elR, "grid-" + s.stage, s.stage === "cut" ? "assembling" : "filming",
-               "gwrap", true, s.board.shots.map(function (sh) { return sh.img; }));
-  } else if (elR.dataset.mode) {  // approve/done \u2014 the board/cinema own the right
-    elR.dataset.mode = ""; elR.innerHTML = "";
-  }
-  // LEFT column: the writer stream, then the critic's live decisions
+// ————— breadcrumb stages: each pipeline step is a page in the canvas —————
+var CRUMBS = ["Script", "Board", "Critic", "Storyboard", "Film", "Cut"];
+var userView = null;  // null = follow the live stage
+
+function liveIdxOf(stage) {
+  if (stage === "approve") return 3;
+  if (stage === "done") return 5;
+  var i = ORDER.indexOf(stage);
+  return i < 0 ? 0 : (i === 3 ? 3 : i);
+}
+
+function renderCrumbs(s) {
+  var li = liveIdxOf(s.stage);
+  var view = userView === null ? li : userView;
   var h = "";
-  if (s.stage === "script" && L.script && L.script.tail) {
-    h = '<div class="llab">writer \u00B7 ' + (L.script.kind === "thinking" ? "thinking" : "writing") + '</div>' +
-        '<div class="lcon' + (L.script.kind === "thinking" ? " dim" : "") + '">' +
-        L.script.tail.replace(/</g, "&lt;") + '</div>';
-  } else if ((s.stage === "critic" || s.stage === "board") && L.critic && L.critic.length) {
-    h = '<div class="llab">critic</div>' + L.critic.map(function (r) {
-      return '<div class="lline"><b>R' + r.round + " \u00B7 " + (r.score != null ? r.score + "/10" : "\u2014") + '</b>' +
-             (r.fixes && r.fixes.length ? " \u2014 " + r.fixes.join("; ").replace(/</g, "&lt;") : " \u2014 approved") + '</div>';
-    }).join("");
+  for (var i = 0; i < CRUMBS.length; i++) {
+    if (i) h += '<span class="csep">\u203A</span>';
+    var cls = i === li ? "crumb live" : (i < li ? "crumb" : "crumb future");
+    if (i === view && i !== li) cls += " viewing";
+    h += '<button class="' + cls + '" data-i="' + i + '">' +
+         (i === li && s.stage !== "done" ? '<span class="cdot"></span>' : "") + CRUMBS[i] + '</button>';
   }
-  elL.innerHTML = h;
+  $("crumbs").innerHTML = h;
+  $("crumbs").querySelectorAll(".crumb").forEach(function (b) {
+    var i = +b.dataset.i;
+    if (i > li) return;                    // майбутнє — некликабельне
+    b.onclick = function () { userView = (i === li) ? null : i; poll0(); };
+  });
 }
 
 function esc2(x) { return String(x == null ? "" : x).replace(/</g, "&lt;"); }
-function blk(label, head, body, open) {
-  return '<details class="fblk"' + (open ? " open" : "") + '><summary><span class="fl">' +
-         label + ' \u2713</span><span class="fv">' + head + '</span></summary>' +
-         (body ? '<div class="fbody">' + body + '</div>' : "") + '</details>';
-}
-function feedRows(s) {
-  var L = s.log || {}, live = s.live || {}, h = "";
-  if (L.script) {
-    var scenes = Array.isArray(L.script.scenes) ? L.script.scenes : [];
-    var sbody = scenes.map(function (sc) {
-      return '<div class="scene"><span class="sn">' + esc2(sc.id) + '</span>' +
-             '<span class="sset">' + esc2(sc.setting) + '</span> \u2014 ' + esc2(sc.action) +
-             (sc.subtitle ? ' <span class="ssub">\u201C' + esc2(sc.subtitle) + '\u201D</span>' : "") + '</div>';
+
+function panelScript(s) {
+  var sc = (s.log && s.log.script) || null;
+  if (!sc) return "";
+  var scenes = Array.isArray(sc.scenes) ? sc.scenes : [];
+  return '<div class="ptitle">\u201C' + esc2(sc.title) + '\u201D \u00B7 ' + scenes.length + ' scenes</div>' +
+    scenes.map(function (x) {
+      return '<div class="scene"><span class="sn">' + esc2(x.id) + '</span>' +
+             '<span class="sset">' + esc2(x.setting) + '</span> \u2014 ' + esc2(x.action) +
+             (x.subtitle ? ' <span class="ssub">\u201C' + esc2(x.subtitle) + '\u201D</span>' : "") + '</div>';
     }).join("");
-    h += blk("SCRIPT", "<b>\u201C" + esc2(L.script.title) + "\u201D</b> \u00B7 " +
-             (scenes.length || L.script.scenes) + " scenes", sbody,
-             ["board", "critic", "stills", "approve"].indexOf(s.stage) >= 0);
+}
+
+function panelBoard(s) {
+  var b = (s.log && s.log.board) || null;
+  if (!b) return "";
+  var shots = Array.isArray(b.shots) ? b.shots : [];
+  return '<div class="ptitle">' + shots.length + ' shots planned</div>' +
+    shots.map(function (sh) {
+      return '<div class="scene"><span class="sn">' + String(sh.id).padStart(2, "0") + '</span>' +
+             esc2(sh.prompt) + (sh.subtitle ? ' <span class="ssub">\u201C' + esc2(sh.subtitle) + '\u201D</span>' : "") + '</div>';
+    }).join("");
+}
+
+function panelCritic(s) {
+  var c = (s.log && s.log.critic) || null;
+  var L = s.live || {};
+  if (!c && L.critic && L.critic.length) {
+    return '<div class="ptitle">critic \u00B7 reviewing\u2026</div>' + L.critic.map(function (r) {
+      return '<div class="lline"><b>R' + r.round + ' \u00B7 ' + (r.score != null ? r.score + "/10" : "\u2014") + '</b>' +
+             (r.fixes && r.fixes.length ? " \u2014 " + esc2(r.fixes.join("; ")) : " \u2014 approved") + '</div>';
+    }).join("");
   }
-  if (L.critic) {
-    var cbody = (L.critic.verdict ? '<div class="fnote">' + esc2(L.critic.verdict) + '</div>' : "") +
-                (L.critic.notes || []).map(function (n) {
-                  if (typeof n === "string") return '<div class="fnote">\u2717 ' + esc2(n) + '</div>';
-                  return '<div class="fnote">\u2717 ' + esc2(n.problem) +
-                         (n.fix ? ' <span class="ffix">\u2192 ' + esc2(n.fix) + '</span>' : "") + '</div>';
-                }).join("");
-    var chead = L.critic.rewrote
-        ? "draft " + (L.critic.score != null ? L.critic.score + "/10" : "rejected") +
-          " \u2192 <b>rewrote the board</b>" + (L.critic.shots ? " \u00B7 " + L.critic.shots + " shots" : "")
-        : (L.critic.score != null ? "score " + L.critic.score + "/10" : "approved") +
-          " \u00B7 " + L.critic.rounds + " round" + (L.critic.rounds > 1 ? "s" : "") +
-          (L.critic.shots ? " \u00B7 " + L.critic.shots + " shots final" : "");
-    h += blk("CRITIC", chead, cbody, false);
+  if (!c) return "";
+  var head = c.rewrote
+      ? "draft " + (c.score != null ? c.score + "/10" : "rejected") + " \u2192 rewrote the board" +
+        (c.shots ? " \u00B7 " + c.shots + " shots" : "")
+      : (c.score != null ? "score " + c.score + "/10" : "approved") +
+        (c.shots ? " \u00B7 " + c.shots + " shots final" : "");
+  return '<div class="ptitle">' + head + '</div>' +
+    (c.verdict ? '<div class="fnote">' + esc2(c.verdict) + '</div>' : "") +
+    (c.notes || []).map(function (n) {
+      if (typeof n === "string") return '<div class="fnote">\u2717 ' + esc2(n) + '</div>';
+      return '<div class="fnote">\u2717 ' + esc2(n.problem) +
+             (n.fix ? ' <span class="ffix">\u2192 ' + esc2(n.fix) + '</span>' : "") + '</div>';
+    }).join("");
+}
+
+function renderStage(s) {
+  var li = liveIdxOf(s.stage);
+  var view = userView === null ? li : userView;
+  var atLive = view === li;
+  // reset all zones; each branch turns on what it owns
+  $("panelText").innerHTML = "";
+  $("liveL").innerHTML = "";
+  $("board").style.display = "none";
+  $("cinema").style.display = "none";
+  var showBeacon = atLive && ["script", "board", "critic", "stills", "film", "cut"].indexOf(s.stage) >= 0;
+  if (view !== 4 && view !== 3 && $("liveR").dataset.mode) { $("liveR").dataset.mode = ""; $("liveR").innerHTML = ""; }
+
+  if (view === 0) {  // Script
+    var L = s.live || {};
+    if (atLive && s.stage === "script" && L.script && L.script.tail) {
+      $("liveL").innerHTML = '<div class="llab">writer \u00B7 ' + (L.script.kind === "thinking" ? "thinking" : "writing") + '</div>' +
+        '<div class="lcon' + (L.script.kind === "thinking" ? " dim" : "") + '">' + esc2(L.script.tail) + '</div>';
+    } else {
+      $("panelText").innerHTML = panelScript(s);
+    }
+  } else if (view === 1) {  // Board
+    $("panelText").innerHTML = panelBoard(s);
+  } else if (view === 2) {  // Critic
+    $("panelText").innerHTML = panelCritic(s);
+  } else if (view === 3) {  // Storyboard
+    if (s.stage === "stills") {
+      var L3 = s.live || {};
+      if (L3.stills && L3.stills.length)
+        syncThumbs($("liveR"), "stills", "storyboard", "lthumbs", false,
+                   L3.stills.map(function (st) { return st.img; }));
+    } else if (s.board && (s.board.shots || []).length) {
+      showBoard(s, s.stage !== "approve");  // read-only once filming has begun
+    }
+  } else if (view === 4) {  // Film
+    if (s.board && (s.board.shots || []).some(function (sh) { return sh.img; }))
+      syncThumbs($("liveR"), "grid-film", s.stage === "cut" ? "assembling" : "filming",
+                 "gwrap", true, s.board.shots.map(function (sh) { return sh.img; }));
+  } else if (view === 5) {  // Cut
+    if (s.stage === "done") {
+      $("cinema").style.display = "block";
+      showBeacon = false;
+    } else if (s.board && (s.board.shots || []).some(function (sh) { return sh.img; })) {
+      syncThumbs($("liveR"), "grid-cut", "assembling", "gwrap", true,
+                 s.board.shots.map(function (sh) { return sh.img; }));
+    }
   }
-  $("feed").innerHTML = h;
+  if (s.stage === "approve" || s.stage === "done") showBeacon = false;
+  $("stStage").style.display = showBeacon ? "block" : "none";
 }
 
 function sceneOf(s, sh) {
@@ -948,7 +1007,7 @@ function sceneOf(s, sh) {
     if (scenes[i].id === sh.scene_id) return scenes[i];
   return null;
 }
-function showBoard(s) {
+function showBoard(s, readonly) {
   var b = s.board || {};
   var withImgs = (b.shots || []).some(function (sh) { return sh.img || sh.fail; });
   if (withImgs) {
@@ -977,7 +1036,12 @@ function showBoard(s) {
         '<div class="bs">' + (sh.subtitle || "") + '</div>' +
         '<div class="bscene">' + scene + '</div></div>';
     }).join("") + "</div>";
-    wireBoardCells(s);
+    if (readonly) {
+      $("shotlist").querySelectorAll(".bx, .rnote").forEach(function (el) { el.style.display = "none"; });
+      $("shotlist").querySelectorAll(".bcell").forEach(function (c) { c.removeAttribute("draggable"); });
+    } else {
+      wireBoardCells(s);
+    }
   } else {
     $("shotlist").innerHTML = (b.shots || []).map(function (sh) {
       return '<div class="shot"><span class="sn">' + String(sh.id).padStart(2, "0") + '</span>' +
@@ -1104,29 +1168,29 @@ function reorderShots(s, fromId, toId) {
     .catch(function () {});
 }
 
+var __pollState = null;
+function poll0() {  // re-render from the last status without refetching
+  if (__pollState) { renderCrumbs(__pollState); renderStage(__pollState); }
+}
 function poll() {
   fetch("/status").then(function (r) { return r.json(); }).then(function (s) {
    try {
     // run vanished (server restarted / reset) while we're showing it — recover
-    // to a clean form instead of sitting in a stale, empty, stuck state forever
     if (s.stage === "idle" && document.body.classList.contains("studio")) {
       location.reload();
       return;
     }
-    var isApprove = s.stage === "approve";
-    var idx = isApprove ? 4 : ORDER.indexOf(s.stage);
-    document.querySelectorAll(".step").forEach(function (el, i) {
-      el.className = "step" + (i < idx || s.stage === "done" ? " done"
-        : (i === idx && !isApprove) ? " on" : "");
-    });
+    __pollState = s;
     if (s.title) $("runTitle").textContent = "\u201C" + s.title + "\u201D";
     if (s.input) $("runsub").innerHTML = "\u201C" + esc2(s.input.logline) + "\u201D " +
       '<span class="rsopts">\u00B7 ' + esc2(s.input.cast) + ' \u00B7 ' + s.input.secs + 's</span>';
     setMockStage(s.stage);
-    renderLive(s);
-    feedRows(s);
-    var snap = "stage=" + s.stage + " feed=" + $("feed").innerHTML.length +
-               " liveL=" + $("liveL").innerHTML.length + " liveR=" + $("liveR").innerHTML.length +
+    // arriving at the gate or the premiere always pulls the user there
+    if (s.stage !== window.__lastStage && (s.stage === "approve" || s.stage === "done")) userView = null;
+    renderCrumbs(s);
+    renderStage(s);
+    var snap = "stage=" + s.stage + " view=" + (userView === null ? "live" : userView) +
+               " panel=" + $("panelText").innerHTML.length + " liveR=" + $("liveR").innerHTML.length +
                " logKeys=" + Object.keys(s.log || {}).join(",");
     if (location.search.indexOf("dbg") >= 0) { $("dbg").style.display = "block"; $("dbg").textContent = snap; }
     if (s.stage !== window.__lastStage) {
@@ -1134,26 +1198,13 @@ function poll() {
       fetch("/clientlog", { method: "POST", headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({ err: "[telemetry] " + snap }) }).catch(function () {});
     }
-    if (isApprove) {
-      $("detail").textContent = "";
-      $("beacon").style.display = "none"; $("mock").style.display = "none";
+    if (s.stage === "approve") {
       $("stBar").classList.add("show");
       $("barApprove").style.display = "flex"; $("barDone").style.display = "none";
-      showBoard(s); return;
+      $("detail").textContent = "";
+      setTimeout(poll, 1200); return;
     }
-    $("stBar").classList.remove("show");
-    $("beacon").style.display = "block"; $("mock").style.display = "block";
-    var secs = Math.round((Date.now() - t0) / 1000);
-    var el = secs < 100 ? secs + "s"
-           : Math.floor(secs / 60) + "m " + String(secs % 60).padStart(2, "0") + "s";
-    $("detail").textContent =
-      s.stage === "stills" && s.detail ? "sketching " + s.detail + " · " + el :
-      s.stage === "film" && s.detail ? "rendering shot " + s.detail + " · " + el :
-      s.stage === "critic" && s.detail ? s.detail + " · " + el :
-      s.stage !== "done" ? el : "";
     if (s.stage === "done") {
-      $("steps").style.display = "none"; $("detail").textContent = "";
-      $("beacon").style.display = "none"; $("mock").style.display = "none";
       $("player").src = s.video;
       $("dl").href = s.video;
       $("title").textContent = s.title || "";
@@ -1161,10 +1212,9 @@ function poll() {
       $("cap").textContent = s.caption || "";
       $("copycap").onclick = function () {
         navigator.clipboard.writeText(s.caption || "");
-        this.textContent = "✓ Copied"; var b = this;
+        this.textContent = "\u2713 Copied"; var b = this;
         setTimeout(function () { b.textContent = "Copy caption"; }, 1500);
       };
-      $("cinema").style.display = "block";
       $("stBar").classList.add("show");
       $("barApprove").style.display = "none"; $("barDone").style.display = "flex";
       $("barInfo").textContent = "cost $" + (+s.cost).toFixed(2);
@@ -1172,6 +1222,15 @@ function poll() {
       loadVids();
       return;
     }
+    $("stBar").classList.remove("show");
+    $("beacon").style.display = "block"; $("mock").style.display = "block";
+    var secs = Math.round((Date.now() - t0) / 1000);
+    var el = secs < 100 ? secs + "s"
+           : Math.floor(secs / 60) + "m " + String(secs % 60).padStart(2, "0") + "s";
+    $("detail").textContent =
+      s.stage === "stills" && s.detail ? "sketching " + s.detail + " \u00B7 " + el :
+      s.stage === "film" && s.detail ? "rendering shot " + s.detail + " \u00B7 " + el :
+      s.stage === "critic" && s.detail ? s.detail + " \u00B7 " + el : el;
     if (s.stage === "error") {
       document.body.classList.remove("studio");
       $("formErr").style.display = "block";
