@@ -134,12 +134,7 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   #panes { width: 100%; max-width: 940px; display: flex; flex-direction: column; gap: 20px; align-items: center; }
   #formPane { max-width: 680px; }
   #runPane { align-self: stretch; }
-  /* two-column production: narrative (script + critic) left, storyboard right */
-  #prod { display: grid; grid-template-columns: minmax(0, 250px) minmax(0, 1fr);
-          gap: 24px; margin-top: 22px; align-items: start; }
-  #leftcol { min-width: 0; }
-  #rightcol { min-width: 0; }
-  @media (max-width: 680px) { #prod { grid-template-columns: 1fr; gap: 16px; } }
+
   .bcell { cursor: grab; }
   .bcell:active { cursor: grabbing; }
   .bcell.dragging { opacity: .35; }
@@ -234,9 +229,7 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   #liveR:not(:empty) { margin-bottom: 14px; }
   #liveL:not(:empty) { margin-bottom: 14px; }
 
-  #runPane { display: none; }
-  #panes.running #runPane { display: block; animation: rise .5s cubic-bezier(.22,.8,.3,1); }
-  @keyframes rise { from { transform: translateY(18px); opacity: 0; } }
+
   .runglass { background: rgba(252,252,255,.92);
               box-shadow: 0 24px 70px rgba(90,70,200,.16), 0 3px 10px rgba(34,33,58,.05),
                           inset 0 1px 0 #FFFFFF; }
@@ -247,9 +240,7 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   #runsub { color: #A9A6C6; font-size: 12.5px; margin: 6px 0 2px; line-height: 1.45; }
   #runsub b { color: #8B88AC; font-weight: 600; }
   #runsub .rsopts { font-family: "JetBrains Mono", monospace; font-size: 11px; }
-  /* during a run only the Production card is shown; Start over (reload) restores */
-  #panes.running #formPane { display: none; }
-  #panes.running #myvids { display: none !important; }
+
   #beacon { width: 70px; height: 70px; margin: 14px auto 6px; position: relative; display: none; }
   #beacon .core { position: absolute; inset: 21px; border-radius: 50%;
                   background: radial-gradient(circle at 35% 30%, #A897FF, #6C5CE7);
@@ -261,7 +252,8 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   @keyframes ring { 0% { transform: scale(.55); opacity: 1; } 100% { transform: scale(1.35); opacity: 0; } }
   #mock { display: none; text-align: center; font-family: "JetBrains Mono", monospace;
           font-size: 12px; color: #A9A6C6; min-height: 17px; margin-bottom: 4px; }
-  #boardgrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-top: 24px; }
+  #boardgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+               gap: 20px; margin-top: 8px; }
   .bcell { position: relative; }
   .bcell img { width: 100%; border-radius: 16px; display: block;
                box-shadow: 0 14px 34px rgba(90,70,200,.20); }
@@ -294,8 +286,8 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   .lline { font-family: "JetBrains Mono", monospace; font-size: 12px; color: #55536E;
            padding: 6px 3px; border-top: 1px solid #EDEBF7; }
   .lline b { color: #5646D6; }
-  .lthumbs { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 10px; }
-  .lthumbs img { width: 52px; height: 74px; object-fit: cover; border-radius: 9px;
+  .lthumbs { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; }
+  .lthumbs img { width: 128px; height: 204px; object-fit: cover; border-radius: 14px;
                  box-shadow: 0 6px 14px rgba(90,70,200,.16); animation: pop .3s ease; }
   @keyframes pop { 0% { transform: scale(.6); opacity: 0; } }
   #feed { margin-top: 10px; display: none; }
@@ -321,10 +313,10 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   .scene .sset { font-weight: 600; color: #454363; }
   .scene .ssub { color: #8B88AC; font-style: italic; }
   .ffix { color: #6C5CE7; }
-  .gwrap { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
-           gap: 10px; margin-top: 14px; }
+  .gwrap { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+           gap: 14px; margin-top: 14px; }
   .gcell { position: relative; border-radius: 14px; overflow: hidden; }
-  .gcell img { width: 100%; height: 150px; object-fit: cover; display: block;
+  .gcell img { width: 100%; height: 240px; object-fit: cover; display: block;
                filter: saturate(.35) brightness(1.12) blur(2px); opacity: .68; }
   .gcell::after { content: ""; position: absolute; inset: 0;
     background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,.75) 50%, transparent 65%);
@@ -416,6 +408,52 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
                   border-bottom: 8px solid transparent; }
   .foot { margin-top: 26px; font-size: 12px; }
   .foot a { color: #A9A6C6; }
+
+  /* —— Studio: full-screen production workspace —— */
+  #studio { display: none; }
+  body.studio { overflow: hidden; }
+  body.studio .wordmark, body.studio #panes, body.studio .foot { display: none; }
+  body.studio #studio { display: flex; flex-direction: column; position: fixed; inset: 0; z-index: 5; }
+  #stTop { display: flex; align-items: center; gap: 16px; padding: 11px 22px; flex: 0 0 auto;
+           background: rgba(255,255,255,.62); border-bottom: 1px solid rgba(255,255,255,.8);
+           backdrop-filter: blur(30px) saturate(1.4); -webkit-backdrop-filter: blur(30px) saturate(1.4); }
+  .stmark { font-family: "Unbounded", system-ui; font-weight: 800; font-size: 15px; color: #241A47; }
+  #stTop #runsub { flex: 1; min-width: 0; margin: 0; overflow: hidden; text-overflow: ellipsis;
+                   white-space: nowrap; }
+  #stTop #steps { display: flex; gap: 20px; margin: 0; flex: 0 0 auto; }
+  #stTop .step { flex: 0 0 auto; font-size: 9px; letter-spacing: .12em; }
+  #stTop .step .d { width: 9px; height: 9px; margin: 0 auto 4px; }
+  #stScript { display: none; border: 0; border-radius: 999px; padding: 6px 14px; cursor: pointer;
+              background: #F3E8FF; color: #7C3AED;
+              font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 700; }
+  #stBody { flex: 1; display: grid; grid-template-columns: 300px minmax(0, 1fr); overflow: hidden; }
+  #stLeft { overflow-y: auto; padding: 20px 22px; background: rgba(255,255,255,.42);
+            border-right: 1px solid rgba(255,255,255,.7); }
+  #stCanvas { overflow-y: auto; padding: 26px 32px; }
+  #stInner { max-width: 1400px; margin: 0 auto; }
+  #stStage { text-align: center; }
+  #stStage #beacon { margin-top: 9vh; }
+  #stBar { display: none; align-items: center; gap: 14px; padding: 12px 22px; flex: 0 0 auto;
+           background: rgba(255,255,255,.7); border-top: 1px solid rgba(255,255,255,.8);
+           backdrop-filter: blur(30px) saturate(1.4); -webkit-backdrop-filter: blur(30px) saturate(1.4); }
+  #stBar.show { display: flex; }
+  #barInfo { font-family: "JetBrains Mono", monospace; font-size: 12px; color: #8B88AC; }
+  .barbtns { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+  #stBar .go { flex: 0 0 auto; padding: 12px 30px; font-size: 13px; }
+  #stBar .go::before { width: 24px; height: 24px; font-size: 13px; }
+  .gray2 { border: 0; border-radius: 999px; padding: 12px 20px; cursor: pointer;
+           background: rgba(120,110,160,.12); color: #6B6890;
+           font: 600 12.5px -apple-system, system-ui; transition: background .18s; }
+  .gray2:hover { background: rgba(120,110,160,.22); }
+  @media (max-width: 680px) {
+    #stBody { grid-template-columns: 1fr; }
+    #stLeft { display: none; }
+    #studio.showleft #stLeft { display: block; position: fixed; top: 50px; bottom: 0; left: 0;
+      width: 84%; z-index: 6; background: rgba(250,248,255,.97);
+      box-shadow: 20px 0 60px rgba(60,30,120,.18); }
+    #stScript { display: inline-flex; }
+    #stTop #runsub, #stTop #steps { display: none; }
+  }
   #tabs { display: flex; gap: 6px; margin-bottom: 20px; }
   .tab { border: 0; background: transparent; cursor: pointer; padding: 8px 16px; border-radius: 999px;
          font-family: "JetBrains Mono", monospace; font-size: 12.5px; font-weight: 700; letter-spacing: .04em;
@@ -474,56 +512,62 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   </div>
   </div><!-- /formPane -->
 
-  <div id="runPane" class="glass runglass">
-  <div class="runhead">
+</div><!-- /panes -->
+
+<div id="studio">
+  <div id="stTop">
+    <span class="stmark">drama<span class="dot">916</span></span>
     <span id="runTitle">Production</span>
+    <span id="runsub"></span>
+    <button id="stScript" onclick="document.getElementById('studio').classList.toggle('showleft')">Script</button>
+    <div id="steps">
+      <div class="step" data-s="script"><div class="d"></div>SCRIPT</div>
+      <div class="step" data-s="board"><div class="d"></div>BOARD</div>
+      <div class="step" data-s="critic"><div class="d"></div>CRITIC</div>
+      <div class="step" data-s="stills"><div class="d"></div>STILLS</div>
+      <div class="step" data-s="film"><div class="d"></div>FILM</div>
+      <div class="step" data-s="cut"><div class="d"></div>CUT</div>
+    </div>
     <button class="ghost" onclick="startOver()" title="close">✕</button>
   </div>
-  <div id="runsub"></div>
-  <div id="beacon"><span class="core"></span></div>
-  <div id="mock"></div>
-  <div id="detail"></div>
-  <div id="steps">
-    <div class="step" data-s="script"><div class="d"></div>SCRIPT</div>
-    <div class="step" data-s="board"><div class="d"></div>BOARD</div>
-    <div class="step" data-s="critic"><div class="d"></div>CRITIC</div>
-    <div class="step" data-s="stills"><div class="d"></div>STILLS</div>
-    <div class="step" data-s="film"><div class="d"></div>FILM</div>
-    <div class="step" data-s="cut"><div class="d"></div>CUT</div>
-  </div>
 
-  <div id="prod">
-    <div id="leftcol">
+  <div id="stBody">
+    <div id="stLeft">
       <div id="liveL"></div>
       <div id="feed"></div>
     </div>
-    <div id="rightcol">
-      <div id="liveR"></div>
-      <div id="board" style="display:none">
-        <div id="shotlist"></div>
-        <div class="row" style="margin-top:18px">
-          <button id="film" class="go">Film it</button>
-        </div>
-        <button class="graybtn" onclick="startOver()">Start over</button>
+    <div id="stCanvas"><div id="stInner">
+      <div id="stStage">
+        <div id="beacon"><span class="core"></span></div>
+        <div id="mock"></div>
+        <div id="detail"></div>
       </div>
+      <div id="liveR"></div>
+      <div id="board" style="display:none"><div id="shotlist"></div></div>
       <div id="cinema">
         <video id="player" controls playsinline></video>
         <div id="title"></div>
         <div id="meta"></div>
         <div id="cap"></div>
-        <div class="row">
-          <a id="dl" class="chip" download="showrunner.mp4">Download</a>
-          <button id="copycap" class="chip">Copy caption</button>
-          <button class="ghost" onclick="startOver()" style="margin-left:auto">New film</button>
-        </div>
       </div>
-    </div>
+      <div id="dbg" style="display:none;margin-top:10px;font:10px/1.4 monospace;color:#C6C3DE"></div>
+      <div id="err"></div>
+    </div></div>
   </div>
-  <div id="dbg" style="display:none;margin-top:10px;font:10px/1.4 monospace;color:#C6C3DE"></div>
-  <div id="err"></div>
-  </div><!-- /runPane -->
 
-</div><!-- /panes -->
+  <div id="stBar">
+    <span id="barInfo"></span>
+    <span class="barbtns" id="barApprove" style="display:none">
+      <button class="gray2" onclick="startOver()">Start over</button>
+      <button id="film" class="go">Film it</button>
+    </span>
+    <span class="barbtns" id="barDone" style="display:none">
+      <a id="dl" class="chip" download="drama916.mp4">Download</a>
+      <button id="copycap" class="chip">Copy caption</button>
+      <button class="gray2" onclick="startOver()">New film</button>
+    </span>
+  </div>
+</div>
 
 <div class="foot"><a href="https://www.qwencloud.com">Qwen + HappyHorse on Alibaba Cloud</a> · <span id="build">BUILD_STAMP</span></div>
 
@@ -630,7 +674,7 @@ function renderDrafts() {
 renderDrafts();
 
 function enterRun() {
-  document.getElementById("panes").classList.add("running");
+  document.body.classList.add("studio");
   $("steps").style.display = "flex"; $("feed").style.display = "block";
   $("beacon").style.display = "block"; $("mock").style.display = "block";
   if (!t0) t0 = Date.now();
@@ -777,10 +821,7 @@ $("go").onclick = function () {
           $("err").textContent = e.error || "could not start";
         });
       }
-      document.getElementById("panes").classList.add("running");
-      $("steps").style.display = "flex"; $("feed").style.display = "block";
-      $("beacon").style.display = "block"; $("mock").style.display = "block";
-      poll();
+      enterRun();
     });
 };
 
@@ -918,6 +959,7 @@ function showBoard(s) {
         '<span class="sp">' + (sh.prompt || "").slice(0, 90) + '…</span></span></div>';
     }).join("");
   }
+  $("barInfo").textContent = (b.shots || []).length + " frames \u00B7 voiced";
   $("film").textContent = b.estimate ? "Film it \u00B7 ~$" + Math.round(b.estimate) : "Film it";
   $("film").onclick = function () {
     var btn = this; btn.disabled = true;
@@ -929,6 +971,7 @@ function showBoard(s) {
       }
       t0 = Date.now();
       $("board").style.display = "none";
+      $("stBar").classList.remove("show");
       $("beacon").style.display = "block"; $("mock").style.display = "block";
       poll();
     }).catch(function () { btn.disabled = false; reportErr("could not start filming \u2014 server unreachable"); });
@@ -1026,7 +1069,7 @@ function poll() {
    try {
     // run vanished (server restarted / reset) while we're showing it — recover
     // to a clean form instead of sitting in a stale, empty, stuck state forever
-    if (s.stage === "idle" && document.getElementById("panes").classList.contains("running")) {
+    if (s.stage === "idle" && document.body.classList.contains("studio")) {
       location.reload();
       return;
     }
@@ -1054,8 +1097,11 @@ function poll() {
     if (isApprove) {
       $("detail").textContent = "";
       $("beacon").style.display = "none"; $("mock").style.display = "none";
+      $("stBar").classList.add("show");
+      $("barApprove").style.display = "flex"; $("barDone").style.display = "none";
       showBoard(s); return;
     }
+    $("stBar").classList.remove("show");
     $("beacon").style.display = "block"; $("mock").style.display = "block";
     var secs = Math.round((Date.now() - t0) / 1000);
     var el = secs < 100 ? secs + "s"
@@ -1079,12 +1125,15 @@ function poll() {
         setTimeout(function () { b.textContent = "Copy caption"; }, 1500);
       };
       $("cinema").style.display = "block";
+      $("stBar").classList.add("show");
+      $("barApprove").style.display = "none"; $("barDone").style.display = "flex";
+      $("barInfo").textContent = "cost $" + (+s.cost).toFixed(2);
       $("player").play().catch(function () {});
       loadVids();
       return;
     }
     if (s.stage === "error") {
-      document.getElementById("panes").classList.remove("running");
+      document.body.classList.remove("studio");
       $("formErr").style.display = "block";
       $("formErr").textContent = s.error || "failed";
       $("go").disabled = false; $("log").disabled = false;
