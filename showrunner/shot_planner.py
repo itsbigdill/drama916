@@ -16,7 +16,10 @@ content filter. Describe physical closeness symbolically and G-rated — standin
 leaning heads together, holding hands, hearts or sparkles floating. NEVER use words
 like kiss, embrace, intimacy, passionate, seductive, bodies pressed together.
 For EACH shot fill:
-- `characters`: NAMES of the characters visible in that shot (subset of the cast);
+- `characters`: NAMES of every character visible OR physically present in that shot,
+  even partially — if the action mentions any part of a character (their hands,
+  shoulder, lap, silhouette), tag that character too, otherwise the image model
+  will invent generic human body parts;
 - `speaker`: NAME of the character who says that shot's line, "" if the shot is silent;
 - `action`: one short plain-language line of the physical action/staging;
 - `emotion`: the mood/feeling of the shot in a few words;

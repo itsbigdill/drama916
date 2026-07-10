@@ -263,7 +263,11 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   .bfall .bfi { font-size: 26px; }
   .bfall .bft { font-family: "JetBrains Mono", monospace; font-size: 11.5px; font-weight: 700;
                 color: #B4232F; letter-spacing: .04em; }
-  .bfall .bfh { font-size: 12px; color: #9490B4; line-height: 1.45; }
+  .bfbtn { border: 0; border-radius: 999px; padding: 9px 18px; cursor: pointer; margin-top: 4px;
+           background: linear-gradient(96deg, #E879F9, #7C3AED); color: #FFF;
+           font-family: "JetBrains Mono", monospace; font-size: 11.5px; font-weight: 700;
+           box-shadow: 0 8px 20px rgba(168,85,247,.35); transition: transform .12s; }
+  .bfbtn:hover { transform: translateY(-1px); }
   #boardgrid.v916 .bfall { aspect-ratio: 9/16; }
   #boardgrid.v169 .bfall { aspect-ratio: 16/9; }
   .bcell .bp { font-size: 12.5px; color: #9490B4; margin-top: 5px; line-height: 1.5; }
@@ -447,10 +451,12 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   .barbtns { margin-left: auto; display: flex; gap: 10px; align-items: center; }
   #stBar .go { flex: 0 0 auto; padding: 12px 30px; font-size: 13px; }
   #stBar .go::before { width: 24px; height: 24px; font-size: 13px; }
-  .gray2 { border: 0; border-radius: 999px; padding: 12px 20px; cursor: pointer;
-           background: rgba(120,110,160,.12); color: #6B6890;
-           font: 600 12.5px -apple-system, system-ui; transition: background .18s; }
-  .gray2:hover { background: rgba(120,110,160,.22); }
+  .gray2 { border: 0; border-radius: 999px; padding: 0 30px; min-height: 48px; cursor: pointer;
+           display: inline-flex; align-items: center; justify-content: center;
+           background: rgba(120,110,160,.14); color: #6B6890;
+           font-family: "Unbounded", system-ui; font-weight: 800; font-size: 13px;
+           letter-spacing: .12em; text-transform: uppercase; transition: background .18s; }
+  .gray2:hover { background: rgba(120,110,160,.24); }
   @media (max-width: 680px) {
     #stBody { grid-template-columns: 1fr; }
     #stLeft { display: none; }
@@ -954,7 +960,7 @@ function showBoard(s) {
         (sh.img
           ? '<img src="/video?p=' + encodeURIComponent(sh.img) + '&t=' + Date.now() + '">'
           : '<div class="bfall"><span class="bfi">\u26A0\uFE0F</span><span class="bft">' + failText + '</span>' +
-            '<span class="bfh">rewrite it with a \u21BB note<br>or remove the shot</span></div>') +
+            '<button class="bfbtn">Regenerate</button></div>') +
         '<div class="rnote"><input maxlength="200" placeholder="what to fix? (optional)">' +
         '<button class="rgo" title="redraw">\u21BB</button></div></div>' +
         '<div class="bs">' + (sh.subtitle || "") + '</div>' +
@@ -1042,6 +1048,8 @@ function wireBoardCells(s) {
       else if (e.key === "Escape") { form.classList.remove("open"); }
     };
     if (form) { var go = form.querySelector(".rgo"); if (go) go.onclick = runRedraw; }
+    var bfb = cell.querySelector(".bfbtn");
+    if (bfb) bfb.onclick = function (e) { e.stopPropagation(); runRedraw(); };
     if (dr) dr.onclick = function () {
       fetch("/drop", { method: "POST", headers: { "Content-Type": "application/json" },
                        body: JSON.stringify({ id: id }) })

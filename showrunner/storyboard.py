@@ -72,23 +72,53 @@ def generate_still(prompt: str, size: str, out_path: Path, ledger: Ledger,
     return _generate(content, size, out_path, ledger, "stills")
 
 
+FRAMINGS = [
+    "full body, front view",
+    # re-framings for portraits the input filter flags by silhouette (bananas…):
+    # same character, tighter crop or a scene pose — identity kept, trigger gone
+    "waist-up view, focus on the face and expression",
+    "seated at a small table waving hello, three-quarter view",
+]
+
+
 def generate_portrait(character: dict, size: str, out_path: Path, ledger: Ledger,
-                      style: str = "") -> Path:
+                      style: str = "", framing: int = 0) -> Path:
     """One canonical reference portrait per character (the 'character sheet').
     The style preset MUST lead here too — the portrait is the reference every
     shot is locked to, so if it renders photoreal the whole film goes photoreal
     no matter what the shot prompts say."""
     lead = (style.strip() + " ") if style else ""
-    content = [{"text": f"{lead}Character reference sheet, single character, full body, "
-                        "front view, neutral studio background, even lighting: "
+    frame = FRAMINGS[min(framing, len(FRAMINGS) - 1)]
+    content = [{"text": f"{lead}Character reference sheet, single character, {frame}, "
+                        "neutral studio background, even lighting: "
                         f"{character.get('name', '')} — {character.get('visual', '')}"}]
     return _generate(content, size, out_path, ledger, "cast_sheet")
+
+
+def _input_ok(ref: Path, size: str, ledger: Ledger) -> bool:
+    """Can this portrait actually be USED as a reference? The input filter
+    sometimes flags a portrait (the banana case) even though it generated fine
+    as output — then every shot referencing it dies with DataInspectionFailed."""
+    probe = ref.with_name(ref.stem + "_probe.png")
+    try:
+        generate_still("The same character standing in a neutral pose, soft light.",
+                       size, probe, ledger, refs=[ref])
+        probe.unlink(missing_ok=True)
+        return True
+    except Exception as e:
+        detail = getattr(getattr(e, "response", None), "text", "") or str(e)
+        probe.unlink(missing_ok=True)
+        if "DataInspection" in detail:
+            return False
+        return True  # quota/transient errors must not condemn a good portrait
 
 
 def cast_all(characters: list[dict], size: str, cast_dir: Path, ledger: Ledger,
              progress: Callable[[int, int], None], style: str = "") -> dict[str, Path]:
     """Portrait per character -> {name: path}, in the film's style. Retries on
-    throttle so a character never silently vanishes for lack of a reference."""
+    throttle, and VALIDATES each portrait as a reference input — a portrait the
+    filter flags gets regenerated until it passes (or we give up and the shots
+    that need it will surface an honest moderation failure)."""
     cast_dir.mkdir(parents=True, exist_ok=True)
     done = 0
 
@@ -109,6 +139,19 @@ def cast_all(characters: list[dict], size: str, cast_dir: Path, ledger: Ledger,
                     continue
                 out = None
                 break
+        if out is not None:
+            for regen in range(3):
+                if _input_ok(out, size, ledger):
+                    break
+                # re-frame, don't just reroll: the filter flags the SILHOUETTE
+                # (full-body banana), so a tighter crop keeps identity and passes
+                print(f"[cast] portrait '{name}' FLAGGED as reference input — reframing ({regen+1}/3)")
+                try:
+                    generate_portrait(ch, size, out, ledger, style=style, framing=regen + 1)
+                except Exception as e:
+                    detail = getattr(getattr(e, "response", None), "text", "") or str(e)
+                    print(f"[cast] regen '{name}' failed: {detail[:120]}")
+                    break
         done += 1
         progress(done, len(characters))
         return name, out
