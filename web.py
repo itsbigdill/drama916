@@ -237,8 +237,6 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   .step.done .d { background: radial-gradient(circle at 35% 30%, #FFF, #A8A5C8);
                   box-shadow: inset 0 1px 1px #FFF; }
   @keyframes pulse { 50% { transform: scale(1.4); } }
-  #detail { text-align: center; font-family: "JetBrains Mono", monospace; font-size: 12.5px;
-            color: #8B88AC; margin-top: 12px; min-height: 18px; }
   #liveR:not(:empty) { margin-bottom: 14px; }
   #liveL:not(:empty) { margin-bottom: 14px; }
   .skrow { height: 15px; border-radius: 8px; margin: 13px 0;
@@ -260,8 +258,6 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   #runsub b { color: #8B88AC; font-weight: 600; }
   #runsub .rsopts { font-family: "JetBrains Mono", monospace; font-size: 11px; }
 
-  #mock { display: none; text-align: center; font-family: "JetBrains Mono", monospace;
-          font-size: 12px; color: #A9A6C6; min-height: 17px; margin-bottom: 4px; }
   #boardgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
                gap: 26px 22px; margin-top: 8px; }
   @media (max-width: 680px) {
@@ -467,8 +463,8 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   .crumb.future { background: transparent; color: #B9B7D2; cursor: default; }
   .crumb.future:hover { transform: none; }
   .csep { color: #C6C3DE; font-size: 12px; }
-  #stStage { text-align: center; }
-  #stStage { padding-top: 8vh; }
+  #stStatus { font-family: "JetBrains Mono", monospace; font-size: 11.5px;
+              color: #A9A6C6; margin: -8px 0 18px 4px; min-height: 15px; }
   #stBar { display: none; align-items: center; gap: 14px; padding: 12px 22px; flex: 0 0 auto;
            background: rgba(255,255,255,.7); border-top: 1px solid rgba(255,255,255,.8);
            backdrop-filter: blur(30px) saturate(1.4); -webkit-backdrop-filter: blur(30px) saturate(1.4); }
@@ -567,10 +563,7 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   <div id="stBody">
     <div id="stCanvas"><div id="stInner">
       <div id="crumbs"></div>
-      <div id="stStage">
-        <div id="mock"></div>
-        <div id="detail"></div>
-      </div>
+      <div id="stStatus"></div>
       <div id="panelText"></div>
       <div id="liveL"></div>
       <div id="liveR"></div>
@@ -713,7 +706,6 @@ renderDrafts();
 
 function enterRun() {
   document.body.classList.add("studio");
-  $("mock").style.display = "block";
   if (!t0) t0 = Date.now();
   poll();
 }
@@ -799,25 +791,6 @@ document.querySelectorAll(".trtab").forEach(function (b) {
   };
 });
 loadTrends("today");
-
-// студійні рядки під маяком
-var MOCKS = {
-  script:  ["Waking the screenwriter…", "Chasing the third act…", "Sharpening pencils…"],
-  board:   ["Taping storyboards to the wall…", "Counting the shots…"],
-  critic:  ["The critic adjusts their glasses…", "Red ink everywhere…"],
-  stills:  ["Casting is arguing about the lead…", "Painting frame by frame…", "Mixing the palette…"],
-  film:    ["Quiet on set…", "Rolling…", "Craft services ran out of coffee…"],
-  cut:     ["Splicing the reels…", "Syncing subtitles…"]
-};
-var mockIx = 0, mockStage = "script";
-function setMockStage(st) { if (MOCKS[st]) mockStage = st; }
-setInterval(function () {
-  var m = $("mock");
-  if (m.style.display !== "block") return;
-  var list = MOCKS[mockStage] || MOCKS.script;
-  mockIx = (mockIx + 1) % list.length;
-  m.textContent = list[mockIx];
-}, 2700);
 
 // rotating idea placeholder
 var IDEAS = [
@@ -1022,7 +995,6 @@ function renderStage(s) {
   $("liveL").innerHTML = "";
   $("board").style.display = "none";
   $("cinema").style.display = "none";
-  var showBeacon = atLive && ["script", "board", "critic", "stills", "film", "cut"].indexOf(s.stage) >= 0;
   if (view !== 4 && view !== 3 && $("liveR").dataset.mode) { $("liveR").dataset.mode = ""; $("liveR").innerHTML = ""; }
 
   if (view === 0) {  // Script
@@ -1059,14 +1031,11 @@ function renderStage(s) {
   } else if (view === 5) {  // Cut
     if (s.stage === "done") {
       $("cinema").style.display = "block";
-      showBeacon = false;
     } else if (s.board && (s.board.shots || []).some(function (sh) { return sh.img; })) {
       syncThumbs($("liveR"), "grid-cut", "assembling", "gwrap", true,
                  s.board.shots.map(function (sh) { return sh.img; }));
     }
   }
-  if (s.stage === "approve" || s.stage === "done") showBeacon = false;
-  $("stStage").style.display = showBeacon ? "block" : "none";
 }
 
 function sceneOf(s, sh) {
@@ -1139,7 +1108,6 @@ function showBoard(s, readonly) {
       t0 = Date.now();
       $("board").style.display = "none";
       $("stBar").classList.remove("show");
-      $("mock").style.display = "block";
       poll();
     }).catch(function () { btn.disabled = false; reportErr("could not start filming \u2014 server unreachable"); });
   };
@@ -1248,6 +1216,21 @@ function reorderShots(s, fromId, toId) {
     .catch(function () {});
 }
 
+function statusLine(s) {
+  var d = s.detail || "";
+  if (s.stage === "script") return "writing the screenplay\u2026";
+  if (s.stage === "board") return "planning the shots\u2026";
+  if (s.stage === "critic") return "the critic is reviewing\u2026";
+  if (s.stage === "stills") {
+    if (d.indexOf("casting") === 0) return d + " \u00B7 drawing character sheets\u2026";
+    if (d.indexOf("retrying") === 0) return d + "\u2026";
+    return "painting frames" + (d ? " " + d : "") + "\u2026";
+  }
+  if (s.stage === "voice") return "recording voices" + (d ? " " + d : "") + "\u2026";
+  if (s.stage === "film") return "rendering shots" + (d ? " " + d : "") + "\u2026";
+  if (s.stage === "cut") return "assembling the film\u2026";
+  return "";
+}
 var __pollState = null;
 function poll0() {  // re-render from the last status without refetching
   if (__pollState) { renderCrumbs(__pollState); renderStage(__pollState); }
@@ -1264,7 +1247,7 @@ function poll() {
     if (s.title) $("runTitle").textContent = "\u201C" + s.title + "\u201D";
     if (s.input) $("runsub").innerHTML = "\u201C" + esc2(s.input.logline) + "\u201D " +
       '<span class="rsopts">\u00B7 ' + esc2(s.input.cast) + ' \u00B7 ' + s.input.secs + 's</span>';
-    setMockStage(s.stage);
+    $("stStatus").textContent = statusLine(s);
     // arriving at the gate or the premiere always pulls the user there
     if (s.stage !== window.__lastStage && (s.stage === "approve" || s.stage === "done")) userView = null;
     renderCrumbs(s);
@@ -1281,7 +1264,6 @@ function poll() {
     if (s.stage === "approve") {
       $("stBar").classList.add("show");
       $("barApprove").style.display = "flex"; $("barDone").style.display = "none";
-      $("detail").textContent = "";
       setTimeout(poll, 1200); return;
     }
     if (s.stage === "done") {
@@ -1319,14 +1301,6 @@ function poll() {
       return;
     }
     $("stBar").classList.remove("show");
-    $("mock").style.display = "block";
-    var secs = Math.round((Date.now() - t0) / 1000);
-    var el = secs < 100 ? secs + "s"
-           : Math.floor(secs / 60) + "m " + String(secs % 60).padStart(2, "0") + "s";
-    $("detail").textContent =
-      s.stage === "stills" && s.detail ? "sketching " + s.detail + " \u00B7 " + el :
-      s.stage === "film" && s.detail ? "rendering shot " + s.detail + " \u00B7 " + el :
-      s.stage === "critic" && s.detail ? s.detail + " \u00B7 " + el : el;
     if (s.stage === "error") {
       document.body.classList.remove("studio");
       $("formErr").style.display = "block";
