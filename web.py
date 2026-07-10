@@ -1043,7 +1043,13 @@ function renderStage(s) {
         syncThumbs($("liveR"), "stills", "storyboard", "lthumbs", false,
                    L3.stills.map(function (st) { return st.img; }));
     } else if (s.board && (s.board.shots || []).length) {
-      showBoard(s, s.stage !== "approve");  // read-only once filming has begun
+      // the stills preview strip must not linger above the real board
+      if ($("liveR").dataset.mode) { $("liveR").dataset.mode = ""; $("liveR").innerHTML = ""; }
+      var ro = s.stage !== "approve";  // read-only once filming has begun
+      // rebuild ONLY when the board actually changed — a rebuild every poll
+      // re-fetches every image (cache-buster) and the grid visibly blinks
+      if (boardSig(s, ro) !== window.__boardSig) showBoard(s, ro);
+      else $("board").style.display = "block";
     }
   } else if (view === 4) {  // Film
     if (s.board && (s.board.shots || []).some(function (sh) { return sh.img; }))
@@ -1067,6 +1073,11 @@ function sceneOf(s, sh) {
   for (var i = 0; i < scenes.length; i++)
     if (scenes[i].id === sh.scene_id) return scenes[i];
   return null;
+}
+function boardSig(s, ro) {
+  return (ro ? "ro|" : "rw|") + ((s.board && s.board.shots) || []).map(function (sh) {
+    return sh.id + ":" + (sh.img ? 1 : 0) + ":" + (sh.fail || "");
+  }).join(",");
 }
 function showBoard(s, readonly) {
   var b = s.board || {};
@@ -1132,6 +1143,7 @@ function showBoard(s, readonly) {
     }).catch(function () { btn.disabled = false; reportErr("could not start filming \u2014 server unreachable"); });
   };
   $("board").style.display = "block";
+  window.__boardSig = boardSig(s, !!readonly);
 }
 
 function wireBoardCells(s) {
