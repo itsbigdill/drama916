@@ -27,7 +27,7 @@ state = {"running": False, "stage": "idle", "detail": "", "video": None,
 lock = threading.Lock()
 # one approve Event PER RUN: an abandoned run keeps waiting on its own dead
 # event and can never sneak into the paid FILM stage.
-current_approve = {"ev": threading.Event(), "edits": {"drop": set(), "order": []}}
+current_approve = {"ev": threading.Event(), "edits": {"drop": set(), "order": [], "mods": {}}}
 
 
 def start_run(logline: str, dry_run: bool, vertical: bool,
@@ -36,13 +36,14 @@ def start_run(logline: str, dry_run: bool, vertical: bool,
         state["run_id"] += 1
         my_run = state["run_id"]
     my_event = threading.Event()
-    my_edits = {"drop": set(), "order": []}
+    my_edits = {"drop": set(), "order": [], "mods": {}}
     current_approve["ev"] = my_event
     current_approve["edits"] = my_edits
 
     def approval():
         my_event.wait()
-        return {"drop": sorted(my_edits["drop"]), "order": list(my_edits["order"])}
+        return {"drop": sorted(my_edits["drop"]), "order": list(my_edits["order"]),
+                "mods": dict(my_edits["mods"])}
 
     def cb(stage: str, detail: str):
         with lock:
@@ -1165,16 +1166,22 @@ function wireBoardCells(s) {
       // a blocked frame has no file yet — redraw writes to its intended path
       fetch("/redraw", { method: "POST", headers: { "Content-Type": "application/json" },
                          body: JSON.stringify({ id: id, img: shot.img || shot.imgpath,
-                                                prompt: shot.prompt,
+                                                prompt: shot.prompt, action: shot.action,
+                                                subtitle: shot.subtitle,
                                                 size: s.board.size, note: note }) })
         .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
         .then(function (res) {
           cell.classList.remove("rf"); rd.disabled = false;
           if (res.ok) {
             if (res.d.prompt) shot.prompt = res.d.prompt;  // build future redraws on it
+            var textChanged = (res.d.action && res.d.action !== shot.action) ||
+                              (res.d.subtitle != null && res.d.subtitle !== shot.subtitle);
+            if (res.d.action) shot.action = res.d.action;
+            if (res.d.subtitle != null) shot.subtitle = res.d.subtitle;
             if (input) input.value = "";
-            if (wasFailed) {  // frame exists now — unblock it and re-render the board
-              shot.img = res.d.img; shot.fail = "";
+            if (wasFailed || textChanged) {  // re-render so the caption matches the new frame
+              if (wasFailed) { shot.img = res.d.img; shot.fail = ""; }
+              window.__boardSig = null;
               showBoard(s);
               return;
             }
@@ -1464,6 +1471,8 @@ class H(BaseHTTPRequestHandler):
                 shot = next((s for s in (b or {}).get("shots", []) if s["id"] == sid), None) if b else None
                 size = (b or {}).get("size") if b else None
             prompt = (shot or {}).get("prompt") or req.get("prompt")
+            action = (shot or {}).get("action") or req.get("action") or ""
+            subtitle = (shot or {}).get("subtitle") or req.get("subtitle") or ""
             img = (shot or {}).get("img") or req.get("img")
             size = size or req.get("size") or "720*1280"
             note = str(req.get("note", "")).strip()[:200]
@@ -1476,19 +1485,28 @@ class H(BaseHTTPRequestHandler):
             from showrunner.ledger import Ledger
             from showrunner.storyboard import generate_still
             ledger = Ledger()
-            # a director's note steers the redraw: rewrite the prompt to honor the
-            # fix while keeping the same character(s) and style, then repaint
+            # a director's note steers the redraw AND keeps the shot's text in
+            # sync: the caption (action) follows the new staging; the spoken
+            # line changes only when the note explicitly asks for it
             if note:
                 from showrunner import config as srconfig
-                from showrunner.llm import chat
+                from showrunner.llm import chat_json
                 try:
-                    prompt = chat("redraw_note", srconfig.MODEL_CHEAP,
-                                  "You rewrite a single image prompt to apply a director's "
-                                  "correction. Keep the same character(s), wardrobe and visual "
-                                  "style; change only what the note asks. Reply with the rewritten "
-                                  "prompt only, no preamble.",
-                                  f"PROMPT: {prompt}\nDIRECTOR'S NOTE: {note}",
-                                  ledger, thinking=False).strip() or prompt
+                    rw = chat_json("redraw_note", srconfig.MODEL_CHEAP,
+                                   "You adjust ONE storyboard frame per a director's note. "
+                                   "Keep the same characters, wardrobe and visual style; change "
+                                   "only what the note asks. Reply ONLY JSON: "
+                                   '{"prompt": str,   full rewritten image prompt; '
+                                   '"action": str,   short plain description of what now happens '
+                                   "(no style/camera words); "
+                                   '"subtitle": str   the spoken line - return it UNCHANGED unless '
+                                   "the note explicitly changes what is said}",
+                                   f"PROMPT: {prompt}\nACTION: {action}\nSUBTITLE: {subtitle}\n"
+                                   f"DIRECTOR'S NOTE: {note}",
+                                   ledger, thinking=False)
+                    prompt = str(rw.get("prompt") or prompt)
+                    action = str(rw.get("action") or action)
+                    subtitle = str(rw.get("subtitle") if rw.get("subtitle") is not None else subtitle)
                 except Exception:
                     prompt = prompt + " " + note  # fallback: just append the note
             refs = sorted(out.parent.parent.glob("cast/*.png")) or None
@@ -1497,14 +1515,20 @@ class H(BaseHTTPRequestHandler):
             except Exception as e:
                 detail = getattr(getattr(e, "response", None), "text", "") or str(e)
                 return self._json(502, {"error": detail[:200]})
-            # persist the revised prompt into live state so re-redraws build on it
+            # persist into live state AND into the approval edits, so the film
+            # is shot/voiced with the redrawn prompt/action/line — not the old text
             with lock:
                 lb = state.get("board")
                 if lb:
                     for s2 in lb.get("shots", []):
                         if s2["id"] == sid:
                             s2["prompt"] = prompt
-            return self._json(200, {"ok": True, "img": img, "prompt": prompt})
+                            s2["action"] = action
+                            s2["subtitle"] = subtitle
+                current_approve["edits"].setdefault("mods", {})[sid] = {
+                    "prompt": prompt, "action": action, "subtitle": subtitle}
+            return self._json(200, {"ok": True, "img": img, "prompt": prompt,
+                                    "action": action, "subtitle": subtitle})
         if self.path == "/clientlog":
             n = int(self.headers.get("Content-Length", 0))
             body = json.loads(self.rfile.read(n) or b"{}")

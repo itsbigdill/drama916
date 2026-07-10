@@ -207,6 +207,15 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
             pos = {sid: i for i, sid in enumerate(order)}
             shot_list.sort(key=lambda s: pos.get(s["id"], 1e9))
             console.print(f"human reordered shots -> {[s['id'] for s in shot_list]}")
+        mods = edits.get("mods") or {}
+        if mods:  # redrawn frames: film & voice with the REDRAWN prompt/action/line
+            for s in shot_list:
+                m = mods.get(s["id"])
+                if m:
+                    s["prompt"] = m.get("prompt", s.get("prompt"))
+                    s["action"] = m.get("action", s.get("action"))
+                    s["subtitle"] = m.get("subtitle", s.get("subtitle"))
+            console.print(f"human redrew shots {sorted(mods)} — texts synced")
 
     # HappyHorse takes ~3 min per clip; sequential = ~40 min per film.
     # Generate concurrently (tasks queue server-side) — wall clock ≈ one clip.
