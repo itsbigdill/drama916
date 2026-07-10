@@ -11,6 +11,10 @@ Turn the screenplay into exactly {target} shots of {secs}s each.
 Do NOT describe how the characters LOOK (their appearance, face, outfit, colors are
 locked elsewhere and injected automatically). Only describe what happens.
 One continuous simple action per shot. No text overlays, no rapid cuts.
+MODERATION RULE: actions and emotions go straight into an image model with a strict
+content filter. Describe physical closeness symbolically and G-rated — standing close,
+leaning heads together, holding hands, hearts or sparkles floating. NEVER use words
+like kiss, embrace, intimacy, passionate, seductive, bodies pressed together.
 For EACH shot fill:
 - `characters`: NAMES of the characters visible in that shot (subset of the cast);
 - `speaker`: NAME of the character who says that shot's line, "" if the shot is silent;

@@ -53,6 +53,11 @@ Review the storyboard as a production risk evaluator. Score it from 1 to 10 base
 * inconsistent character descriptions
 * confusing camera moves
 * visually overloaded prompts
+* CONTENT-FILTER TRIGGERS: the action/emotion text goes into an image model with
+  strict moderation. Flag and rewrite physically intimate or suggestive wording
+  (kiss, embrace, intimacy, passionate, seductive, bodies pressed) into G-rated
+  symbolic staging (leaning heads together, holding hands, hearts floating).
+  Your own fixes must never introduce such words.
 
 4. Waste / efficiency
    Identify shots that are redundant, overcomplicated, or could be simplified without damaging the story, emotion, joke, tension, or payoff.

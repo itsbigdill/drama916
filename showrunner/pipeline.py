@@ -172,9 +172,11 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
                 notify("stills", f"{d}/{n}")
                 if path:
                     notify("still_live", json.dumps({"id": sid, "img": path}))
-            paths = sketch_all(shot_list, size, board_dir, ledger, still_done,
-                               portraits=portraits or None)
+            paths, still_fails = sketch_all(shot_list, size, board_dir, ledger, still_done,
+                                            portraits=portraits or None)
             stills = {s["id"]: str(p) for s, p in zip(shot_list, paths) if p}
+        else:
+            still_fails = {}
         notify("approve", json.dumps({
             "estimate": 0 if dry_run else estimate,
             "size": size,
@@ -182,7 +184,11 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
                        "subtitle": s.get("subtitle", ""),
                        "action": s.get("action", ""),
                        "prompt": s.get("prompt", ""),
-                       "img": stills.get(s["id"], "")} for s in shot_list]}))
+                       "img": stills.get(s["id"], ""),
+                       # no fallbacks: a failed frame is shown honestly with its
+                       # reason; redraw writes to this path once the human fixes it
+                       "imgpath": str((run_dir / "board" / f"shot_{s['id']:02}.png")),
+                       "fail": still_fails.get(s["id"], "")} for s in shot_list]}))
         # blocks until the human approves; they may drop and/or reorder shots
         edits = approval() or {}
         dropped = set(edits.get("drop") or [])

@@ -118,16 +118,20 @@ def cast_all(characters: list[dict], size: str, cast_dir: Path, ledger: Ledger,
 
 
 def _try_still(prompt: str, size: str, out: Path, ledger: Ledger,
-               refs: list[Path] | None, tag: str) -> bool:
+               refs: list[Path] | None, tag: str) -> str | None:
+    """None on success; a short failure reason otherwise."""
     try:
         generate_still(prompt, size, out, ledger, refs=refs)
-        return True
+        return None
     except Exception as e:
         detail = getattr(getattr(e, "response", None), "text", "") or str(e)
         print(f"[storyboard] {tag} failed: {detail[:180]}")
-        if "Throttling" in detail:
+        if "Throttling" in detail or "429" in detail:
             time.sleep(15)  # квота хвилинна — коротка пауза її не рятує
-        return False
+            return "rate limit"
+        if "DataInspection" in detail:
+            return "moderation"
+        return "generation failed"
 
 
 def _sanitized(prompt: str, ledger: Ledger) -> str:
@@ -136,8 +140,12 @@ def _sanitized(prompt: str, ledger: Ledger) -> str:
     try:
         return chat("still_sanitize", config.MODEL_CHEAP,
                     "Rewrite the image prompt so it passes strict content moderation. "
-                    "Keep the scene, characters and mood; remove anything violent, dark "
-                    "or brand/person-specific. Reply with the rewritten prompt only.",
+                    "Keep the scene, characters and mood. Remove anything violent, dark "
+                    "or brand/person-specific, AND rewrite any physically intimate or "
+                    "suggestive wording (kiss, embrace, bodies pressed, intimacy, "
+                    "passionate, seductive) into innocent G-rated symbolic staging: "
+                    "standing close, leaning heads together, holding hands, hearts or "
+                    "sparkles floating. Reply with the rewritten prompt only.",
                     prompt, ledger, thinking=False).strip()
     except Exception:
         return "gentle storyboard sketch: " + prompt
@@ -145,16 +153,18 @@ def _sanitized(prompt: str, ledger: Ledger) -> str:
 
 def sketch_all(shots: list[dict], size: str, board_dir: Path, ledger: Ledger,
                progress: Callable[[int, int], None],
-               portraits: dict[str, Path] | None = None) -> list[Path]:
-    """Stills are MANDATORY: the human approves pictures, never dashed placeholders.
-    Each shot is drawn against ONLY the portraits of the characters actually in it
-    (a lemon shot must not be told to keep the banana+peach). Ladder per shot:
-    retry w/ backoff → moderation-softened → flash-sanitized; then serial rescue
-    sweeps; and as a last real-image resort, that shot's own character stands in."""
+               portraits: dict[str, Path] | None = None
+               ) -> tuple[list[Path | None], dict[int, str]]:
+    """Draw each shot against ONLY the portraits of the characters actually in it.
+    Ladder per shot: retry → softened → flash-sanitized rescue sweeps. NO
+    fallbacks: a frame that can't be generated stays empty and its failure
+    reason (moderation / rate limit) is returned so the UI shows it honestly —
+    the human fixes it with a redraw note or removes the shot."""
     board_dir.mkdir(parents=True, exist_ok=True)
     portraits = portraits or {}
     done = 0
     results: dict[int, Path | None] = {}
+    reasons: dict[int, str] = {}
 
     def refs_for(shot: dict) -> list[Path] | None:
         names = shot.get("characters")
@@ -167,21 +177,25 @@ def sketch_all(shots: list[dict], size: str, board_dir: Path, ledger: Ledger,
         nonlocal done
         refs = refs_for(shot)
         out = board_dir / f"shot_{shot['id']:02}.png"
-        ok = (_try_still(shot["prompt"], size, out, ledger, refs, f"shot {shot['id']:02} a1")
-              or _try_still(shot["prompt"], size, out, ledger, refs, f"shot {shot['id']:02} a2")
-              or _try_still("storyboard sketch, calm neutral mood: " + shot["prompt"],
-                            size, out, ledger, refs, f"shot {shot['id']:02} a3"))
-        results[shot["id"]] = out if ok else None
+        err = _try_still(shot["prompt"], size, out, ledger, refs, f"shot {shot['id']:02} a1")
+        if err:
+            err = _try_still(shot["prompt"], size, out, ledger, refs, f"shot {shot['id']:02} a2")
+        if err:
+            err = _try_still("storyboard sketch, calm neutral mood: " + shot["prompt"],
+                             size, out, ledger, refs, f"shot {shot['id']:02} a3")
+        results[shot["id"]] = None if err else out
+        if err:
+            reasons[shot["id"]] = err
         done += 1
-        progress(done, len(shots), shot["id"], str(out) if ok else "")
+        progress(done, len(shots), shot["id"], "" if err else str(out))
 
     # _throttle() already paces every call, so parallelism just fills the gaps
     with ThreadPoolExecutor(max_workers=2) as pool:
         list(pool.map(one, shots))
 
-    # serial rescue sweeps: sanitized prompt, generous spacing. Two rounds —
-    # the per-minute image quota needs real time to refill; settling for a
-    # portrait stand-in after one hasty pass produced studio-grey frames.
+    # serial rescue sweeps: sanitized prompt (strips moderation-triggering
+    # wording), generous spacing for the per-minute quota. Still the REAL frame —
+    # same scene, same characters — not a substitute.
     for round_no in (1, 2):
         for shot in shots:
             if results[shot["id"]] is not None:
@@ -190,28 +204,13 @@ def sketch_all(shots: list[dict], size: str, board_dir: Path, ledger: Ledger,
             time.sleep(20)
             out = board_dir / f"shot_{shot['id']:02}.png"
             clean = _sanitized(shot["prompt"], ledger)
-            if _try_still(clean, size, out, ledger, refs_for(shot),
-                          f"shot {shot['id']:02} rescue r{round_no}"):
+            err = _try_still(clean, size, out, ledger, refs_for(shot),
+                             f"shot {shot['id']:02} rescue r{round_no}")
+            if not err:
                 results[shot["id"]] = out
+                reasons.pop(shot["id"], None)
                 progress(done, len(shots), shot["id"], str(out))
+            else:
+                reasons[shot["id"]] = err
 
-    import shutil
-    used_standins: set = set()
-    for shot in shots:
-        if results[shot["id"]] is not None:
-            continue
-        refs = refs_for(shot)
-        if not refs:
-            continue
-        # last real-image resort: this shot's OWN character is a real frame of the
-        # right character. Prefer a portrait not already used as a stand-in, so
-        # two failed shots don't come out byte-identical (the "two same stills" bug).
-        ref = next((r for r in refs if r not in used_standins), refs[0])
-        used_standins.add(ref)
-        out = board_dir / f"shot_{shot['id']:02}.png"
-        shutil.copy(ref, out)
-        results[shot["id"]] = out
-        progress(done, len(shots), shot["id"], str(out))
-        print(f"[storyboard] shot {shot['id']:02}: {ref.stem} portrait stands in as the frame")
-
-    return [results[s["id"]] for s in shots]
+    return [results[s["id"]] for s in shots], reasons

@@ -257,7 +257,13 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   .bcell { position: relative; }
   .bcell img { width: 100%; border-radius: 16px; display: block;
                box-shadow: 0 14px 34px rgba(90,70,200,.20); }
-  .bfall { border: 1.5px dashed #D9D5EE; border-radius: 16px; background: #FBFAFF; }
+  .bfall { border-radius: 16px; background: #FDF3F4; box-shadow: inset 0 0 0 1px #F5D5D8;
+           display: flex; flex-direction: column; align-items: center; justify-content: center;
+           gap: 8px; padding: 18px; text-align: center; }
+  .bfall .bfi { font-size: 26px; }
+  .bfall .bft { font-family: "JetBrains Mono", monospace; font-size: 11.5px; font-weight: 700;
+                color: #B4232F; letter-spacing: .04em; }
+  .bfall .bfh { font-size: 12px; color: #9490B4; line-height: 1.45; }
   #boardgrid.v916 .bfall { aspect-ratio: 9/16; }
   #boardgrid.v169 .bfall { aspect-ratio: 16/9; }
   .bcell .bp { font-size: 12.5px; color: #9490B4; margin-top: 5px; line-height: 1.5; }
@@ -927,7 +933,7 @@ function sceneOf(s, sh) {
 }
 function showBoard(s) {
   var b = s.board || {};
-  var withImgs = (b.shots || []).some(function (sh) { return sh.img; });
+  var withImgs = (b.shots || []).some(function (sh) { return sh.img || sh.fail; });
   if (withImgs) {
     var prevScene = null;
     $("shotlist").innerHTML = '<div id="boardgrid" class="v' + opts.fmt + '">' + b.shots.map(function (sh, i) {
@@ -938,14 +944,17 @@ function showBoard(s) {
       var act = esc2(sh.action || (sc ? sc.action : "") || (sh.prompt || "").split(". ").pop().slice(0, 90));
       var scene = setting + act;
       prevScene = sh.scene_id;
+      var failText = sh.fail === "moderation" ? "BLOCKED BY MODERATION"
+                   : sh.fail === "rate limit" ? "RATE LIMITED"
+                   : "GENERATION FAILED";
       return '<div class="bcell" draggable="true" data-id="' + sh.id + '"><span class="bn">' + String(i + 1).padStart(2, "0") + '</span>' +
         '<span class="bx"><button class="bbtn rd" title="redraw">\u21BB</button>' +
         '<button class="bbtn dr" title="remove">\u2715</button></span>' +
         '<div class="bimg">' +
         (sh.img
-          ? '<img src="/video?p=' + encodeURIComponent(sh.img) + '&t=' + Date.now() + '" ' +
-            'onerror="this.outerHTML=\'<div class=&quot;bfall&quot;></div>\'">'
-          : '<div class="bfall"></div>') +
+          ? '<img src="/video?p=' + encodeURIComponent(sh.img) + '&t=' + Date.now() + '">'
+          : '<div class="bfall"><span class="bfi">\u26A0\uFE0F</span><span class="bft">' + failText + '</span>' +
+            '<span class="bfh">rewrite it with a \u21BB note<br>or remove the shot</span></div>') +
         '<div class="rnote"><input maxlength="200" placeholder="what to fix? (optional)">' +
         '<button class="rgo" title="redraw">\u21BB</button></div></div>' +
         '<div class="bs">' + (sh.subtitle || "") + '</div>' +
@@ -959,7 +968,11 @@ function showBoard(s) {
         '<span class="sp">' + (sh.prompt || "").slice(0, 90) + '…</span></span></div>';
     }).join("");
   }
-  $("barInfo").textContent = (b.shots || []).length + " frames \u00B7 voiced";
+  var nFail = (b.shots || []).filter(function (sh) { return !sh.img; }).length;
+  $("barInfo").textContent = nFail
+    ? (b.shots || []).length + " frames \u00B7 " + nFail + " blocked \u2014 fix or remove them to film"
+    : (b.shots || []).length + " frames \u00B7 voiced";
+  $("film").disabled = nFail > 0;  // no fallbacks: never film an incomplete board
   $("film").textContent = b.estimate ? "Film it \u00B7 ~$" + Math.round(b.estimate) : "Film it";
   $("film").onclick = function () {
     var btn = this; btn.disabled = true;
@@ -993,9 +1006,12 @@ function wireBoardCells(s) {
       var note = input ? input.value.trim() : "";
       if (form) form.classList.remove("open");
       cell.classList.add("rf"); rd.disabled = true;
-      // send the shot's own data (survives restart) + optional director's note
+      var wasFailed = !shot.img;  // a blocked frame being fixed
+      // send the shot's own data (survives restart) + optional director's note;
+      // a blocked frame has no file yet — redraw writes to its intended path
       fetch("/redraw", { method: "POST", headers: { "Content-Type": "application/json" },
-                         body: JSON.stringify({ id: id, img: shot.img, prompt: shot.prompt,
+                         body: JSON.stringify({ id: id, img: shot.img || shot.imgpath,
+                                                prompt: shot.prompt,
                                                 size: s.board.size, note: note }) })
         .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
         .then(function (res) {
@@ -1003,6 +1019,11 @@ function wireBoardCells(s) {
           if (res.ok) {
             if (res.d.prompt) shot.prompt = res.d.prompt;  // build future redraws on it
             if (input) input.value = "";
+            if (wasFailed) {  // frame exists now — unblock it and re-render the board
+              shot.img = res.d.img; shot.fail = "";
+              showBoard(s);
+              return;
+            }
             var img = cell.querySelector("img");
             if (img) img.src = "/video?p=" + encodeURIComponent(res.d.img) + "&t=" + Date.now();
           } else { reportErr("redraw: " + (res.d.error || "failed")); }
