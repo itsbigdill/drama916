@@ -70,7 +70,10 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
 
     console.rule("2/5 Shot plan")
     notify("board", "")
-    shots = plan_shots(screenplay, ledger, target=shots_target)
+    def board_delta(text_so_far: str, kind: str):
+        if kind == "text":
+            notify("board_live", json.dumps({"tail": text_so_far[-1600:]}))
+    shots = plan_shots(screenplay, ledger, target=shots_target, on_delta=board_delta)
     save("shots_draft.json", shots)
     notify("board", json.dumps({"shots": [{"id": s.get("id"),
                                            "subtitle": str(s.get("subtitle", ""))[:70],
@@ -86,8 +89,10 @@ def run(logline: str, dry_run: bool = False, cb: ProgressCB = None,
         notify("critic_live", json.dumps({"round": rnd, "score": review.get("score"),
                                           "fixes": fixes,
                                           "shots": len(review.get("revised_shots", []) or [])}))
+    def critic_delta(round_no: int, text_so_far: str):
+        notify("critic_tail", json.dumps({"round": round_no, "tail": text_so_far[-1600:]}))
     shots, critique_history = refine(shots, ledger, progress=critic_round,
-                                     max_rounds=1 if fast else 2)
+                                     max_rounds=1 if fast else 2, on_delta=critic_delta)
     save("shots_final.json", shots)
     save("critique_rounds.json", critique_history)
     n = len(shots["shots"])

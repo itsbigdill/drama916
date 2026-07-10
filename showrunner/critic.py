@@ -97,13 +97,17 @@ Use this JSON structure:
 
 
 def refine(shots: dict, ledger: Ledger, progress=None,
-           max_rounds: int = config.MAX_CRITIC_ROUNDS) -> tuple[dict, list[dict]]:
-    """Run up to MAX_CRITIC_ROUNDS; return (approved_shots, critique_history)."""
+           max_rounds: int = config.MAX_CRITIC_ROUNDS,
+           on_delta=None) -> tuple[dict, list[dict]]:
+    """Run up to MAX_CRITIC_ROUNDS; return (approved_shots, critique_history).
+    on_delta(round_no, text_so_far) streams each round's raw output live."""
     history = []
     current = shots
     for round_no in range(1, max_rounds + 1):
+        rd = (lambda r: (lambda text, kind: on_delta(r, text)))(round_no) if on_delta else None
         review = chat_json(f"critic_r{round_no}", config.MODEL_PLANNER, SYSTEM,
-                           json.dumps(current, ensure_ascii=False), ledger, thinking=False)
+                           json.dumps(current, ensure_ascii=False), ledger,
+                           thinking=False, on_delta=rd)
         history.append(review)
         if progress:
             progress(round_no, review)

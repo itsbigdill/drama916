@@ -33,7 +33,8 @@ Reply ONLY with JSON:
 
 
 def plan_shots(screenplay: dict, ledger: Ledger,
-               target: int = config.TARGET_SHOTS) -> dict:
+               target: int = config.TARGET_SHOTS, on_delta=None) -> dict:
     system = SYSTEM_TMPL.format(target=target, secs=config.CLIP_SECONDS)
     return chat_json("shot_plan", config.MODEL_PLANNER, system,
-                     json.dumps(screenplay, ensure_ascii=False), ledger, thinking=False)
+                     json.dumps(screenplay, ensure_ascii=False), ledger,
+                     thinking=False, on_delta=on_delta)

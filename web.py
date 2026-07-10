@@ -52,6 +52,10 @@ def start_run(logline: str, dry_run: bool, vertical: bool,
                 obj = json.loads(detail)
                 if stage == "script_live":
                     state["live"]["script"] = obj
+                elif stage == "board_live":
+                    state["live"]["board"] = obj
+                elif stage == "critic_tail":
+                    state["live"]["ctail"] = obj
                 elif stage == "still_live":
                     state["live"]["stills"].append(obj)
                 elif stage == "critic_live":
@@ -236,6 +240,11 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
             color: #8B88AC; margin-top: 12px; min-height: 18px; }
   #liveR:not(:empty) { margin-bottom: 14px; }
   #liveL:not(:empty) { margin-bottom: 14px; }
+  .skrow { height: 15px; border-radius: 8px; margin: 13px 0;
+           background: linear-gradient(100deg, #EFEBFB 40%, #F9F7FF 50%, #EFEBFB 60%);
+           background-size: 220% 100%; animation: skshine 1.3s linear infinite; }
+  .skrow.w60 { width: 60%; } .skrow.w80 { width: 80%; } .skrow.w45 { width: 45%; }
+  @keyframes skshine { from { background-position: 130% 0; } to { background-position: -90% 0; } }
   #panelText:not(:empty) { background: rgba(255,255,255,.5); border: 1px solid rgba(255,255,255,.75);
     border-radius: 20px; padding: 20px 26px; margin-bottom: 14px; }
   #panelText .ptitle { font-family: "Unbounded", system-ui; font-weight: 500; font-size: 16px;
@@ -925,6 +934,30 @@ function panelScript(s) {
     }).join("");
 }
 
+// pull every completed "key":"value" out of a PARTIAL json stream — this is
+// what turns a raw model stream into rows appearing one by one
+function jvals(tail, key) {
+  var out = [], re = new RegExp('"' + key + '"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"', "g"), m;
+  while ((m = re.exec(tail || ""))) out.push(m[1].replace(/\\"/g, '"'));
+  return out;
+}
+function skel(n) {
+  var w = ["w80", "w60", "w45"], h = "";
+  for (var i = 0; i < n; i++) h += '<div class="skrow ' + w[i % 3] + '"></div>';
+  return h;
+}
+
+function panelBoardLive(s) {
+  var tail = (s.live && s.live.board && s.live.board.tail) || "";
+  var acts = jvals(tail, "action"), subs = jvals(tail, "subtitle");
+  var h = '<div class="ptitle">planning shots\u2026</div>';
+  for (var i = 0; i < acts.length; i++) {
+    h += '<div class="scene"><span class="sn">' + String(i + 1).padStart(2, "0") + '</span>' +
+         esc2(acts[i]) + (subs[i] ? ' <span class="ssub">\u201C' + esc2(subs[i]) + '\u201D</span>' : "") + '</div>';
+  }
+  return h + skel(acts.length ? 2 : 3);
+}
+
 function panelBoard(s) {
   var b = (s.log && s.log.board) || null;
   if (!b) return "";
@@ -934,6 +967,25 @@ function panelBoard(s) {
       return '<div class="scene"><span class="sn">' + String(sh.id).padStart(2, "0") + '</span>' +
              esc2(sh.prompt) + (sh.subtitle ? ' <span class="ssub">\u201C' + esc2(sh.subtitle) + '\u201D</span>' : "") + '</div>';
     }).join("");
+}
+
+function panelCriticLive(s) {
+  var L = s.live || {};
+  var tail = (L.ctail && L.ctail.tail) || "";
+  var rnd = (L.ctail && L.ctail.round) || 1;
+  var probs = jvals(tail, "problem"), fixes = jvals(tail, "fix");
+  var score = /"score"\s*:\s*(\d+)/.exec(tail);
+  var h = '<div class="ptitle">critic \u00B7 round ' + rnd +
+          (score ? ' \u00B7 ' + score[1] + "/10" : "") + '\u2026</div>';
+  (L.critic || []).forEach(function (r) {
+    h += '<div class="lline"><b>R' + r.round + ' \u00B7 ' + (r.score != null ? r.score + "/10" : "\u2014") + '</b>' +
+         (r.fixes && r.fixes.length ? " \u2014 " + esc2(r.fixes.join("; ")) : " \u2014 approved") + '</div>';
+  });
+  for (var i = 0; i < probs.length; i++) {
+    h += '<div class="fnote">\u2717 ' + esc2(probs[i]) +
+         (fixes[i] ? ' <span class="ffix">\u2192 ' + esc2(fixes[i]) + '</span>' : "") + '</div>';
+  }
+  return h + skel(probs.length ? 1 : 2);
 }
 
 function panelCritic(s) {
@@ -981,9 +1033,9 @@ function renderStage(s) {
       $("panelText").innerHTML = panelScript(s);
     }
   } else if (view === 1) {  // Board
-    $("panelText").innerHTML = panelBoard(s);
+    $("panelText").innerHTML = (atLive && s.stage === "board") ? panelBoardLive(s) : panelBoard(s);
   } else if (view === 2) {  // Critic
-    $("panelText").innerHTML = panelCritic(s);
+    $("panelText").innerHTML = (atLive && s.stage === "critic") ? panelCriticLive(s) : panelCritic(s);
   } else if (view === 3) {  // Storyboard
     if (s.stage === "stills") {
       var L3 = s.live || {};
