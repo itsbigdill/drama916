@@ -350,30 +350,39 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   .fthumbs img { width: 52px; height: 74px; object-fit: cover; border-radius: 9px;
                  box-shadow: 0 6px 14px rgba(90,70,200,.16); }
 
-  /* premiere: the film presented as a TikTok post — vertical frame, overlay
-     caption bottom-left, action rail on the right */
+  /* premiere: big vertical frame, title/caption/actions in a side panel
+     (stacked below the video on narrow screens) */
   #cinema { display: none; margin-top: 4px; }
-  #ttframe { position: relative; height: min(70vh, 660px); aspect-ratio: 9/16;
-             max-width: 100%; margin: 0 auto; border-radius: 26px; overflow: hidden;
+  #ttwrap { display: flex; gap: 36px; justify-content: center; align-items: flex-start; }
+  #ttframe { flex: 0 0 auto; height: min(calc(100vh - 245px), 820px); min-height: 460px;
+             aspect-ratio: 9/16; max-width: 100%;
+             border-radius: 26px; overflow: hidden;
              background: #0E0D18; box-shadow: 0 34px 90px rgba(34,33,58,.38); }
   #ttframe video { width: 100%; height: 100%; object-fit: cover; display: block; background: #0E0D18; }
-  #ttoverlay { position: absolute; left: 16px; right: 76px; bottom: 68px; pointer-events: none;
-               text-shadow: 0 1px 14px rgba(0,0,0,.6); }
-  #title { font-family: "Unbounded", system-ui; font-weight: 500; font-size: 17px;
-           color: #FFF; margin-bottom: 7px; }
-  #cap { font-size: 13.5px; line-height: 1.5; color: rgba(255,255,255,.94);
-         white-space: pre-wrap; cursor: pointer; pointer-events: auto; }
+  #ttinfo { flex: 0 1 330px; min-width: 0; padding-top: 12px; }
+  #title { font-family: "Unbounded", system-ui; font-weight: 500; font-size: 19px;
+           color: #33314E; margin-bottom: 10px; }
+  #cap { font-size: 13.5px; line-height: 1.65; color: #55536E;
+         white-space: pre-wrap; cursor: pointer; }
   #cap:empty { display: none; }
-  #ttrail { position: absolute; right: 12px; bottom: 82px; display: flex;
-            flex-direction: column; gap: 12px; }
-  .ttbtn { width: 46px; height: 46px; border-radius: 50%; border: 0; cursor: pointer;
-           background: rgba(20,18,30,.55); color: #FFF; font-size: 19px; line-height: 1;
-           display: flex; align-items: center; justify-content: center; text-decoration: none;
-           backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-           transition: background .15s, transform .12s; }
-  .ttbtn:hover { background: rgba(20,18,30,.78); transform: scale(1.06); }
-  #meta { text-align: center; font-family: "JetBrains Mono", monospace; font-size: 12px;
-          color: #8B88AC; margin-top: 14px; }
+  #meta { font-family: "JetBrains Mono", monospace; font-size: 11.5px;
+          color: #8B88AC; margin-top: 12px; }
+  #ttacts { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+  .tact { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 16px;
+          border: 0; border-radius: 20px; cursor: pointer; text-decoration: none;
+          font: 600 13px -apple-system, system-ui; color: #454363;
+          background: rgba(255,255,255,.72);
+          box-shadow: 0 6px 18px rgba(34,33,58,.10), inset 0 0 0 1px rgba(122,92,255,.14);
+          transition: transform .12s, box-shadow .15s; }
+  .tact:hover { transform: translateY(-1px);
+                box-shadow: 0 10px 24px rgba(34,33,58,.16), inset 0 0 0 1px rgba(122,92,255,.28); }
+  .tact svg { width: 15px; height: 15px; flex: 0 0 auto; }
+  @media (max-width: 760px) {
+    #ttwrap { flex-direction: column; align-items: center; gap: 18px; }
+    #ttframe { height: min(64vh, 620px); }
+    #ttinfo { flex: 0 0 auto; width: min(100%, 420px); padding-top: 0; text-align: center; }
+    #ttacts { justify-content: center; }
+  }
   .ghost { border: 0; background: transparent; cursor: pointer; padding: 0 8px;
            color: #8B88AC; font: 700 13px -apple-system, system-ui; }
 
@@ -569,19 +578,21 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
       <div id="liveR"></div>
       <div id="board" style="display:none"><div id="shotlist"></div></div>
       <div id="cinema">
-        <div id="ttframe">
-          <video id="player" controls playsinline></video>
-          <div id="ttoverlay">
+        <div id="ttwrap">
+          <div id="ttframe">
+            <video id="player" controls playsinline></video>
+          </div>
+          <div id="ttinfo">
             <div id="title"></div>
             <div id="cap" title="tap to copy"></div>
-          </div>
-          <div id="ttrail">
-            <a id="dl" class="ttbtn" download="drama916.mp4" title="Download">&#10515;</a>
-            <button id="copycap" class="ttbtn" title="Copy caption">&#9112;</button>
-            <button id="ttshare" class="ttbtn" title="Share" style="display:none">&#8599;</button>
+            <div id="meta"></div>
+            <div id="ttacts">
+              <a id="dl" class="tact" download="drama916.mp4"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="3" x2="12" y2="15"/></svg><span>Download</span></a>
+              <button id="copycap" class="tact"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span id="caplbl">Copy caption</span></button>
+              <button id="ttshare" class="tact" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg><span>Share</span></button>
+            </div>
           </div>
         </div>
-        <div id="meta"></div>
       </div>
       <div id="dbg" style="display:none;margin-top:10px;font:10px/1.4 monospace;color:#C6C3DE"></div>
       <div id="err"></div>
@@ -865,12 +876,14 @@ function syncThumbs(el, mode, label, wrapCls, cellWrap, urls) {
   });
 }
 // ————— breadcrumb stages: each pipeline step is a page in the canvas —————
-var CRUMBS = ["Script", "Board", "Critic", "Storyboard", "Film", "Cut"];
+var CRUMBS = ["Script", "Board", "Critic", "Storyboard", "Film"];
 var userView = null;  // null = follow the live stage
 
 function liveIdxOf(stage) {
   if (stage === "approve") return 3;
-  if (stage === "done") return 5;
+  // усе після approve — один фінальний етап Film: рендер, дейліз, голос,
+  // монтаж і сама прем'єра
+  if (["film", "dailies", "voice", "cut", "done"].indexOf(stage) >= 0) return 4;
   var i = ORDER.indexOf(stage);
   return i < 0 ? 0 : (i === 3 ? 3 : i);
 }
@@ -1024,15 +1037,12 @@ function renderStage(s) {
       if (boardSig(s, ro) !== window.__boardSig) showBoard(s, ro);
       else $("board").style.display = "block";
     }
-  } else if (view === 4) {  // Film
-    if (s.board && (s.board.shots || []).some(function (sh) { return sh.img; }))
-      syncThumbs($("liveR"), "grid-film", s.stage === "cut" ? "assembling" : "filming",
-                 "gwrap", true, s.board.shots.map(function (sh) { return sh.img; }));
-  } else if (view === 5) {  // Cut
+  } else if (view === 4) {  // Film: shots render, then the premiere takes over
     if (s.stage === "done") {
+      if ($("liveR").dataset.mode) { $("liveR").dataset.mode = ""; $("liveR").innerHTML = ""; }
       $("cinema").style.display = "block";
     } else if (s.board && (s.board.shots || []).some(function (sh) { return sh.img; })) {
-      syncThumbs($("liveR"), "grid-cut", "assembling", "gwrap", true,
+      syncThumbs($("liveR"), "grid-film", "filming", "gwrap", true,
                  s.board.shots.map(function (sh) { return sh.img; }));
     }
   }
@@ -1273,18 +1283,19 @@ function poll() {
       var nsh = (s.board && s.board.shots || []).length;
       $("meta").textContent = "$" + (+s.cost).toFixed(2) + (nsh ? " \u00B7 " + nsh + " shots" : "");
       $("cap").textContent = s.caption || "";
-      function copyCap(el, back) {
+      function copyCap() {
         navigator.clipboard.writeText(s.caption || "");
-        var was = el.textContent; el.textContent = back || "\u2713";
-        setTimeout(function () { el.textContent = was; }, 1400);
+        var lbl = $("caplbl"), was = lbl.textContent;
+        lbl.textContent = "Copied \u2713";
+        setTimeout(function () { lbl.textContent = was; }, 1400);
       }
-      $("copycap").onclick = function () { copyCap(this); };
-      $("cap").onclick = function () { copyCap($("copycap")); };
+      $("copycap").onclick = copyCap;
+      $("cap").onclick = copyCap;
       // mobile: system share sheet with the actual video file -> TikTok in 2 taps
       try {
         var probe = new File([""], "p.mp4", { type: "video/mp4" });
         if (navigator.canShare && navigator.canShare({ files: [probe] })) {
-          $("ttshare").style.display = "flex";
+          $("ttshare").style.display = "inline-flex";
           $("ttshare").onclick = function () {
             fetch(s.video).then(function (r) { return r.blob(); }).then(function (b) {
               var f = new File([b], "drama916.mp4", { type: "video/mp4" });
