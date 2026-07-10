@@ -49,7 +49,7 @@ def start_run(logline: str, dry_run: bool, vertical: bool,
         with lock:
             if state["run_id"] != my_run:
                 return  # a Start over happened; this run is orphaned
-            if stage.endswith("_live"):
+            if stage.endswith("_live") or stage == "critic_tail":
                 obj = json.loads(detail)
                 if stage == "script_live":
                     state["live"]["script"] = obj
