@@ -250,15 +250,6 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   #runsub b { color: #8B88AC; font-weight: 600; }
   #runsub .rsopts { font-family: "JetBrains Mono", monospace; font-size: 11px; }
 
-  #beacon { width: 70px; height: 70px; margin: 14px auto 6px; position: relative; display: none; }
-  #beacon .core { position: absolute; inset: 21px; border-radius: 50%;
-                  background: radial-gradient(circle at 35% 30%, #A897FF, #6C5CE7);
-                  box-shadow: 0 0 26px rgba(108,92,231,.7); animation: recp 1.1s ease-in-out infinite; }
-  #beacon::before, #beacon::after { content: ""; position: absolute; inset: 0; border-radius: 50%;
-                  border: 1px solid rgba(108,92,231,.35); animation: ring 2.2s linear infinite; }
-  #beacon::after { animation-delay: 1.1s; }
-  @keyframes recp { 50% { transform: scale(1.18); } }
-  @keyframes ring { 0% { transform: scale(.55); opacity: 1; } 100% { transform: scale(1.35); opacity: 0; } }
   #mock { display: none; text-align: center; font-family: "JetBrains Mono", monospace;
           font-size: 12px; color: #A9A6C6; min-height: 17px; margin-bottom: 4px; }
   #boardgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
@@ -467,7 +458,7 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   .crumb.future:hover { transform: none; }
   .csep { color: #C6C3DE; font-size: 12px; }
   #stStage { text-align: center; }
-  #stStage #beacon { margin-top: 9vh; }
+  #stStage { padding-top: 8vh; }
   #stBar { display: none; align-items: center; gap: 14px; padding: 12px 22px; flex: 0 0 auto;
            background: rgba(255,255,255,.7); border-top: 1px solid rgba(255,255,255,.8);
            backdrop-filter: blur(30px) saturate(1.4); -webkit-backdrop-filter: blur(30px) saturate(1.4); }
@@ -567,7 +558,6 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
     <div id="stCanvas"><div id="stInner">
       <div id="crumbs"></div>
       <div id="stStage">
-        <div id="beacon"><span class="core"></span></div>
         <div id="mock"></div>
         <div id="detail"></div>
       </div>
@@ -713,7 +703,7 @@ renderDrafts();
 
 function enterRun() {
   document.body.classList.add("studio");
-  $("beacon").style.display = "block"; $("mock").style.display = "block";
+  $("mock").style.display = "block";
   if (!t0) t0 = Date.now();
   poll();
 }
@@ -1085,7 +1075,7 @@ function showBoard(s, readonly) {
       t0 = Date.now();
       $("board").style.display = "none";
       $("stBar").classList.remove("show");
-      $("beacon").style.display = "block"; $("mock").style.display = "block";
+      $("mock").style.display = "block";
       poll();
     }).catch(function () { btn.disabled = false; reportErr("could not start filming \u2014 server unreachable"); });
   };
@@ -1258,7 +1248,7 @@ function poll() {
       return;
     }
     $("stBar").classList.remove("show");
-    $("beacon").style.display = "block"; $("mock").style.display = "block";
+    $("mock").style.display = "block";
     var secs = Math.round((Date.now() - t0) / 1000);
     var el = secs < 100 ? secs + "s"
            : Math.floor(secs / 60) + "m " + String(secs % 60).padStart(2, "0") + "s";
