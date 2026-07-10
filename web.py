@@ -353,18 +353,30 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   .fthumbs img { width: 52px; height: 74px; object-fit: cover; border-radius: 9px;
                  box-shadow: 0 6px 14px rgba(90,70,200,.16); }
 
-  #cinema { display: none; margin-top: 22px; }
-  #cinema video { width: 100%; max-height: 64vh; object-fit: contain; background: #0E0D18;
-                  border-radius: 20px; display: block;
-                  box-shadow: 0 22px 54px rgba(34,33,58,.28); }
-  #cap { font-size: 14px; color: #55536E; background: #F4F3FA;
-         border-radius: 14px; padding: 13px 16px; margin: 14px 0 2px; white-space: pre-wrap; }
+  /* premiere: the film presented as a TikTok post — vertical frame, overlay
+     caption bottom-left, action rail on the right */
+  #cinema { display: none; margin-top: 4px; }
+  #ttframe { position: relative; height: min(70vh, 660px); aspect-ratio: 9/16;
+             max-width: 100%; margin: 0 auto; border-radius: 26px; overflow: hidden;
+             background: #0E0D18; box-shadow: 0 34px 90px rgba(34,33,58,.38); }
+  #ttframe video { width: 100%; height: 100%; object-fit: cover; display: block; background: #0E0D18; }
+  #ttoverlay { position: absolute; left: 16px; right: 76px; bottom: 68px; pointer-events: none;
+               text-shadow: 0 1px 14px rgba(0,0,0,.6); }
+  #title { font-family: "Unbounded", system-ui; font-weight: 500; font-size: 17px;
+           color: #FFF; margin-bottom: 7px; }
+  #cap { font-size: 13.5px; line-height: 1.5; color: rgba(255,255,255,.94);
+         white-space: pre-wrap; cursor: pointer; pointer-events: auto; }
   #cap:empty { display: none; }
-  a.chip { text-decoration: none; display: inline-flex; align-items: center;
-           border: 1px solid #E7E5F3; border-radius: 12px; background: #F4F3FA; padding: 10px 16px; }
-  #title { font-family: "Unbounded", system-ui; font-weight: 500; font-size: 22px;
-           margin: 16px 2px 2px; color: #26244A; }
-  #meta { font-family: "JetBrains Mono", monospace; font-size: 12px; color: #8B88AC; margin: 4px 2px; }
+  #ttrail { position: absolute; right: 12px; bottom: 82px; display: flex;
+            flex-direction: column; gap: 12px; }
+  .ttbtn { width: 46px; height: 46px; border-radius: 50%; border: 0; cursor: pointer;
+           background: rgba(20,18,30,.55); color: #FFF; font-size: 19px; line-height: 1;
+           display: flex; align-items: center; justify-content: center; text-decoration: none;
+           backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+           transition: background .15s, transform .12s; }
+  .ttbtn:hover { background: rgba(20,18,30,.78); transform: scale(1.06); }
+  #meta { text-align: center; font-family: "JetBrains Mono", monospace; font-size: 12px;
+          color: #8B88AC; margin-top: 14px; }
   .ghost { border: 0; background: transparent; cursor: pointer; padding: 0 8px;
            color: #8B88AC; font: 700 13px -apple-system, system-ui; }
 
@@ -564,10 +576,19 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
       <div id="liveR"></div>
       <div id="board" style="display:none"><div id="shotlist"></div></div>
       <div id="cinema">
-        <video id="player" controls playsinline></video>
-        <div id="title"></div>
+        <div id="ttframe">
+          <video id="player" controls playsinline></video>
+          <div id="ttoverlay">
+            <div id="title"></div>
+            <div id="cap" title="tap to copy"></div>
+          </div>
+          <div id="ttrail">
+            <a id="dl" class="ttbtn" download="drama916.mp4" title="Download">&#10515;</a>
+            <button id="copycap" class="ttbtn" title="Copy caption">&#9112;</button>
+            <button id="ttshare" class="ttbtn" title="Share" style="display:none">&#8599;</button>
+          </div>
+        </div>
         <div id="meta"></div>
-        <div id="cap"></div>
       </div>
       <div id="dbg" style="display:none;margin-top:10px;font:10px/1.4 monospace;color:#C6C3DE"></div>
       <div id="err"></div>
@@ -581,9 +602,7 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
       <button id="film" class="go">Film it</button>
     </span>
     <span class="barbtns" id="barDone" style="display:none">
-      <a id="dl" class="chip" download="drama916.mp4">Download</a>
-      <button id="copycap" class="chip">Copy caption</button>
-      <button class="gray2" onclick="startOver()">New film</button>
+      <button class="gray2" onclick="startOver()">Start over</button>
     </span>
   </div>
 </div>
@@ -1208,16 +1227,32 @@ function poll() {
       $("player").src = s.video;
       $("dl").href = s.video;
       $("title").textContent = s.title || "";
-      $("meta").textContent = "cost $" + (+s.cost).toFixed(2);
+      var nsh = (s.board && s.board.shots || []).length;
+      $("meta").textContent = "$" + (+s.cost).toFixed(2) + (nsh ? " \u00B7 " + nsh + " shots" : "");
       $("cap").textContent = s.caption || "";
-      $("copycap").onclick = function () {
+      function copyCap(el, back) {
         navigator.clipboard.writeText(s.caption || "");
-        this.textContent = "\u2713 Copied"; var b = this;
-        setTimeout(function () { b.textContent = "Copy caption"; }, 1500);
-      };
+        var was = el.textContent; el.textContent = back || "\u2713";
+        setTimeout(function () { el.textContent = was; }, 1400);
+      }
+      $("copycap").onclick = function () { copyCap(this); };
+      $("cap").onclick = function () { copyCap($("copycap")); };
+      // mobile: system share sheet with the actual video file -> TikTok in 2 taps
+      try {
+        var probe = new File([""], "p.mp4", { type: "video/mp4" });
+        if (navigator.canShare && navigator.canShare({ files: [probe] })) {
+          $("ttshare").style.display = "flex";
+          $("ttshare").onclick = function () {
+            fetch(s.video).then(function (r) { return r.blob(); }).then(function (b) {
+              var f = new File([b], "drama916.mp4", { type: "video/mp4" });
+              return navigator.share({ files: [f], text: s.caption || "" });
+            }).catch(function () {});
+          };
+        }
+      } catch (e) {}
       $("stBar").classList.add("show");
       $("barApprove").style.display = "none"; $("barDone").style.display = "flex";
-      $("barInfo").textContent = "cost $" + (+s.cost).toFixed(2);
+      $("barInfo").textContent = "$" + (+s.cost).toFixed(2);
       $("player").play().catch(function () {});
       loadVids();
       return;

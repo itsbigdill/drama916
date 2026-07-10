@@ -20,7 +20,10 @@ For EACH shot fill:
   even partially — if the action mentions any part of a character (their hands,
   shoulder, lap, silhouette), tag that character too, otherwise the image model
   will invent generic human body parts;
-- `speaker`: NAME of the character who says that shot's line, "" if the shot is silent;
+- `subtitle`: EVERY shot must carry a spoken line — never leave a shot silent. Put the
+  scene's scripted line on its key shot; for the scene's OTHER shots write a SHORT new
+  in-character line that naturally extends that moment (a reaction, a follow-up);
+- `speaker`: NAME of the character who says that shot's line (required for every shot);
 - `action`: one short plain-language line of the physical action/staging;
 - `emotion`: the mood/feeling of the shot in a few words;
 - `camera`: framing/shot type (e.g. "tight vertical close-up", "wide two-shot").
