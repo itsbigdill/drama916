@@ -121,10 +121,11 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; }
-  body { margin: 0; min-height: 100vh; font: 16px/1.5 -apple-system, system-ui;
+  body { margin: 0; min-height: 100vh; height: 100vh; font: 16px/1.5 -apple-system, system-ui;
          color: #1E1B39; background: #EFE9FF; display: flex; flex-direction: column;
-         align-items: center; padding: 56px 18px; overflow-x: hidden; }
-  @media (max-width: 680px) { body { padding: 26px 12px; } }
+         align-items: center; padding: 40px 18px; overflow: hidden; }
+  body.scroll { height: auto; overflow-x: hidden; overflow-y: auto; padding: 56px 18px; }
+  @media (max-width: 680px) { body { padding: 20px 12px; } body.scroll { padding: 26px 12px; } }
   body::before { content: ""; position: fixed; inset: 0; z-index: -1;
     background:
       radial-gradient(60% 45% at 8% 0%, rgba(168,85,247,.34), transparent 60%),
@@ -133,15 +134,15 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
       linear-gradient(165deg, #ECE5FF 0%, #EEE6FF 45%, #F3ECFF 100%); }
   .mono { font-family: "JetBrains Mono", monospace; }
   .wordmark { font-family: "Unbounded", system-ui; font-weight: 800; font-size: 30px;
-              letter-spacing: -.02em; margin-bottom: 28px; color: #241A47; }
+              letter-spacing: -.02em; margin-bottom: 22px; color: #241A47; flex: 0 0 auto; }
   .dot { background: linear-gradient(92deg, #A855F7, #E879F9);
          -webkit-background-clip: text; background-clip: text; color: transparent;
          text-shadow: 0 0 22px rgba(168,85,247,.45); }
-  #panes { width: 100%; max-width: 940px; display: flex; flex-direction: column; gap: 20px; align-items: center; }
-  #formPane { max-width: 680px; width: 100%; display: flex; flex-direction: column;
-              min-height: calc(100vh - 190px); }
+  #panes { width: 100%; max-width: 940px; flex: 1 1 auto; min-height: 0;
+           display: flex; flex-direction: column; gap: 20px; align-items: center; }
+  #formPane { max-width: 680px; width: 100%; flex: 1 1 auto; min-height: 0;
+              display: flex; flex-direction: column; }
   @media (max-width: 680px) {
-    #formPane { min-height: calc(100vh - 130px); }
     #vstrip { margin: 0 -12px; padding: 6px 4px 36px; }
     #mq { margin: 0 -12px; padding: 4px 4px 12px; }
     #composer { margin: 0 -12px; width: calc(100% + 24px); }
@@ -470,7 +471,7 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   .vplay::after { content: ""; position: absolute; left: 16px; top: 12px;
                   border-left: 12px solid #26244A; border-top: 8px solid transparent;
                   border-bottom: 8px solid transparent; }
-  .foot { margin-top: 26px; font-size: 12px; }
+  .foot { margin-top: 16px; font-size: 12px; flex: 0 0 auto; }
   .foot a { color: #A9A6C6; }
 
   /* —— Studio: full-screen production workspace —— */
@@ -763,6 +764,18 @@ window.addEventListener("load", function () {
     else restoreDraft();
   }).catch(restoreDraft);
 });
+// the landing is one screen (body is 100vh, overflow hidden); only fall back to
+// page scrolling when the content genuinely can't fit, so nothing gets clipped
+function fitPage() {
+  document.body.classList.remove("scroll");
+  if (!document.body.classList.contains("studio") &&
+      document.body.scrollHeight > window.innerHeight + 2)
+    document.body.classList.add("scroll");
+}
+window.addEventListener("load", fitPage);
+window.addEventListener("resize", fitPage);
+// the rail fills whatever height is free, so re-check once its cards have loaded
+setTimeout(fitPage, 400);
 // drama916: always vertical 9:16, always drama. Cast optional (empty by default
 // so a named character renders as itself instead of being humanized).
 var opts = { fmt: "916", len: "6", genre: "", cast: "" };
