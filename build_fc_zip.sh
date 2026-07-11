@@ -19,7 +19,7 @@ python3 -m pip install \
   --platform manylinux2014_x86_64 \
   --python-version "$PYVER" \
   --only-binary=:all: --no-compile \
-  openai httpx python-dotenv rich >/dev/null
+  openai httpx python-dotenv rich exceptiongroup >/dev/null   # exceptiongroup: anyio backport for py<3.11 (marker-skipped when building on 3.14)
 rm -rf code/images   # tqdm ships demo gifs at the package root — drop the cruft
 
 echo "==> 2/4  fetching static ffmpeg/ffprobe (amd64)"
