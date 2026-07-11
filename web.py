@@ -427,6 +427,40 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   .ghost { border: 0; background: transparent; cursor: pointer; padding: 0 8px;
            color: #8B88AC; font: 700 13px -apple-system, system-ui; }
 
+  /* recent-film lightbox: same language as the premiere — big vertical video,
+     caption + hashtags in a side panel (below on mobile), copy button */
+  #vlight { display: none; position: fixed; inset: 0; z-index: 60; padding: 34px;
+            background: rgba(24,18,48,.5); backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px); }
+  #vlight.open { display: flex; align-items: center; justify-content: center; }
+  #vlbox { display: flex; gap: 34px; align-items: center; max-width: 940px; width: 100%;
+           justify-content: center; }
+  #vlframe { flex: 0 0 auto; height: min(84vh, 820px); aspect-ratio: 9/16; max-width: 100%;
+             border-radius: 24px; overflow: hidden; background: #0E0D18;
+             box-shadow: 0 34px 90px rgba(10,8,30,.5); }
+  #vlframe video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  #vlinfo { flex: 0 1 340px; min-width: 0; color: #FFF; }
+  #vltitle { font-family: "Unbounded", system-ui; font-weight: 500; font-size: 21px; margin-bottom: 12px; }
+  #vlcap { font-size: 14px; line-height: 1.7; color: rgba(255,255,255,.9); white-space: pre-wrap;
+           cursor: pointer; max-height: 40vh; overflow-y: auto; }
+  #vlcap:empty { display: none; }
+  #vlmeta { font-family: "JetBrains Mono", monospace; font-size: 11.5px;
+            color: rgba(255,255,255,.5); margin-top: 12px; }
+  #vlacts { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+  #vlacts .tact { background: rgba(255,255,255,.14); color: #FFF; box-shadow: inset 0 0 0 1px rgba(255,255,255,.18); }
+  #vlacts .tact:hover { background: rgba(255,255,255,.24); box-shadow: inset 0 0 0 1px rgba(255,255,255,.34); }
+  #vlx { position: fixed; top: 20px; right: 24px; width: 42px; height: 42px; border: 0; cursor: pointer;
+         border-radius: 50%; background: rgba(255,255,255,.16); color: #FFF; font-size: 20px;
+         backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+  #vlx:hover { background: rgba(255,255,255,.28); }
+  @media (max-width: 760px) {
+    #vlight { padding: 16px; }
+    #vlbox { flex-direction: column; gap: 14px; overflow-y: auto; }
+    #vlframe { height: min(62vh, 560px); }
+    #vlinfo { flex: 0 0 auto; width: 100%; max-width: 420px; text-align: center; }
+    #vlacts { justify-content: center; }
+    #vlcap { max-height: none; }
+  }
   #err { display: none; margin-top: 16px; font-size: 14px; color: #E5484D; }
   .bx { position: absolute; top: 10px; right: 10px; display: flex; gap: 7px; z-index: 2;
         opacity: 1; transition: opacity .2s; }
@@ -629,6 +663,22 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
 
 <div class="foot"><a href="https://www.qwencloud.com">Qwen + HappyHorse on Alibaba Cloud</a> · <span id="build">BUILD_STAMP</span></div>
 
+<div id="vlight">
+  <button id="vlx" title="close">&#10005;</button>
+  <div id="vlbox">
+    <div id="vlframe"><video id="vlvideo" controls autoplay playsinline></video></div>
+    <div id="vlinfo">
+      <div id="vltitle"></div>
+      <div id="vlcap" title="tap to copy"></div>
+      <div id="vlmeta"></div>
+      <div id="vlacts">
+        <a id="vldl" class="tact" download="drama916.mp4"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="3" x2="12" y2="15"/></svg><span>Download</span></a>
+        <button id="vlcopy" class="tact"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span id="vlcopylbl">Copy caption</span></button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="jsErr" style="display:none;position:fixed;bottom:10px;left:10px;right:10px;z-index:99;background:#FDECEC;border:1px solid #F5B5B5;color:#B42318;border-radius:12px;padding:10px 14px;font:12px/1.4 monospace;word-break:break-all"></div>
 <script>
 var $ = function (id) { return document.getElementById(id); };
@@ -671,16 +721,43 @@ function loadVids() {
              '<div class="vc">' + (v.cost != null ? "$" + (+v.cost).toFixed(2) : "") + '</div></div></div>';
     }).join("");
     $("vstrip").querySelectorAll(".vcell").forEach(function (c) {
-      c.onclick = function () {
-        var v = vids[+c.dataset.i];
-        c.innerHTML = '<video controls autoplay playsinline src="/video?p=' +
-                      encodeURIComponent(v.video) + '"></video>';
-        c.onclick = null;
-      };
+      c.onclick = function () { openLightbox(vids[+c.dataset.i]); };
     });
   }).catch(function () {});
 }
 loadVids();
+
+// clicking a recent film opens a premiere-style lightbox: big video + the
+// caption/hashtags + a copy button (the same info a fresh render ends on)
+function openLightbox(v) {
+  if (!v) return;
+  $("vlvideo").src = "/video?p=" + encodeURIComponent(v.video);
+  $("vldl").href = "/video?p=" + encodeURIComponent(v.video);
+  $("vltitle").textContent = v.title || "Untitled";
+  $("vlcap").textContent = v.caption || "";
+  $("vlmeta").textContent = v.cost != null ? "$" + (+v.cost).toFixed(2) : "";
+  $("vlcopylbl").textContent = "Copy caption";
+  $("vlight").classList.add("open");
+  $("vlvideo").play().catch(function () {});
+}
+function closeLightbox() {
+  $("vlight").classList.remove("open");
+  var vv = $("vlvideo"); vv.pause(); vv.removeAttribute("src"); vv.load();
+}
+function copyVlCap() {
+  try { var r = navigator.clipboard.writeText($("vlcap").textContent || "");
+        if (r && r.catch) r.catch(function () {}); } catch (e) {}
+  var l = $("vlcopylbl"), was = l.textContent;
+  l.textContent = "Copied \u2713";
+  setTimeout(function () { l.textContent = was; }, 1400);
+}
+$("vlx").onclick = closeLightbox;
+$("vlcopy").onclick = copyVlCap;
+$("vlcap").onclick = copyVlCap;
+$("vlight").onclick = function (e) { if (e.target === this) closeLightbox(); };
+document.addEventListener("keydown", function (e) {
+  if (e.key === "Escape" && $("vlight").classList.contains("open")) closeLightbox();
+});
 
 // Drafts live behind a toggle next to Recent generations
 function showDrafts(on) {
