@@ -5,3 +5,4 @@ runs/
 web_test8099.py
 runs_seed/
 fc-build/
+.DS_Store
