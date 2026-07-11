@@ -4,40 +4,45 @@ The app is a single stateful HTTP server (`python web.py`) that needs `ffmpeg`.
 It's packaged as a container so it runs identically anywhere. Below is the
 Function Compute (FC 3.0) path — one always-warm instance behind a public URL.
 
-**You run these steps** — they need your Alibaba credentials, which I don't handle.
+**You run the credentialed steps** (login / push / deploy) — they need your
+Alibaba access keys, which I don't handle. Everything else is already set up.
 
-## 0. One-time prerequisites
-- An Alibaba Cloud account with **Function Compute** and **Container Registry (ACR)** enabled, region **Singapore (ap-southeast-1)**.
-- Docker installed locally (this Mac doesn't have it yet: `brew install --cask docker`, then open Docker Desktop).
-- Serverless Devs: `npm i -g @serverless-devs/s` then `s config add` (or `export`
+## 0. Prerequisites — DONE on this Mac
+Already installed and verified July 11:
+- **Docker via colima** (headless, no Docker Desktop) — daemon running (`colima status`).
+- **docker CLI** and **Serverless Devs** (`s`, v3.1.10).
+- The image is **already built and smoke-tested** as `drama916:test`
+  (linux/amd64, ffmpeg present, all 4 seeded films serve, health check green).
+
+If colima ever stops: `colima start`. To rebuild the image:
+`./seed_showcase.sh && docker build --platform linux/amd64 -t drama916:test .`
+
+You still need, on your side:
+- An Alibaba account with **Function Compute** + **Container Registry (ACR)** in
+  **Singapore (ap-southeast-1)** — this is the wife's account.
+- Your Alibaba access keys: `s config add` (or export
   `ALIBABA_CLOUD_ACCESS_KEY_ID` / `ALIBABA_CLOUD_ACCESS_KEY_SECRET`).
 
-## 1. Refresh the showcase reel baked into the image (optional)
-```bash
-./seed_showcase.sh          # curates runs_seed/ (~67M, 4 films, public)
-```
-
-## 2. Build and push the image to ACR
-Create an ACR namespace (e.g. `drama916`) and an `amd64` build — FC runs x86, so
-build with `--platform linux/amd64` on this Apple-Silicon Mac.
+## 1. Tag the built image for your ACR + push
+Create an ACR namespace (e.g. `drama916`) in the Singapore registry, then:
 ```bash
 REGISTRY=registry-intl.ap-southeast-1.aliyuncs.com
 NS=<your-acr-namespace>
 IMAGE=$REGISTRY/$NS/drama916:latest
 
 docker login $REGISTRY                       # ACR username + the registry password you set
-docker build --platform linux/amd64 -t $IMAGE .
+docker tag drama916:test $IMAGE              # the image is already built
 docker push $IMAGE
 ```
 
-## 3. Point the config at the image + set the key
+## 2. Point the config at the image + set the key
 - In `s.yaml`, replace `<ACR_IMAGE_URI>` with `$IMAGE` from above.
 - Export the DashScope key so `s.yaml` picks it up:
 ```bash
 export DASHSCOPE_API_KEY=sk-...              # the Singapore intl key from .env
 ```
 
-## 4. Deploy
+## 3. Deploy
 ```bash
 s deploy
 ```
@@ -47,7 +52,9 @@ rail shows the four seeded films, then run one logline end to end.
 
 ## Redeploy after a code change
 ```bash
-docker build --platform linux/amd64 -t $IMAGE . && docker push $IMAGE
+./seed_showcase.sh   # only if you changed the showcase films
+docker build --platform linux/amd64 -t drama916:test .
+docker tag drama916:test $IMAGE && docker push $IMAGE
 s deploy                                     # picks up the new image
 ```
 
