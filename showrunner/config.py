@@ -39,7 +39,10 @@ CONCURRENT_CLIPS = 4              # HappyHorse ~3min/clip; parallel keeps wall-c
 MAX_RESHOOTS = 3                  # dailies QC may reshoot at most this many takes per film
 DAILIES_QC = False                # optional post-shoot VL review; off = faster pipeline
 
-RUNS_DIR = "runs"
+import os
+# where finished runs are written. On read-only hosts (FC code dir is read-only,
+# only /tmp is writable) set RUNS_DIR=/tmp/runs; defaults to ./runs locally.
+RUNS_DIR = os.environ.get("RUNS_DIR", "runs")
 
 # Visual style is NOT left to the writer's imagination anymore — it is a fixed
 # preset chosen by the selected cast. Keyed by the cast option value ("" = Auto).

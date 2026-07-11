@@ -17,6 +17,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from showrunner import pipeline  # noqa: E402
+from showrunner import config  # noqa: E402
 
 PORT = int(os.environ.get("PORT", "8090"))  # hosts (FC/Render/etc.) inject PORT
 
@@ -1506,7 +1507,7 @@ class H(BaseHTTPRequestHandler):
                 self._json(200, dict(state))
         elif path == "/videos":
             uid = unquote(self.path.split("uid=", 1)[-1]) if "uid=" in self.path else ""
-            runs = Path(__file__).parent / "runs"
+            runs = Path(config.RUNS_DIR).resolve()
             vids = []
             for d in (sorted(runs.iterdir(), reverse=True) if runs.exists() else []):
                 f = d / "final.mp4"
@@ -1523,8 +1524,10 @@ class H(BaseHTTPRequestHandler):
                     except (OSError, ValueError):
                         return None
                 poster = d / "board" / "shot_01.png"
-                vids.append({"video": f"runs/{d.name}/final.mp4",
-                             "poster": f"runs/{d.name}/board/shot_01.png" if poster.is_file() else "",
+                # absolute paths so /video validates them under RUNS regardless of
+                # where RUNS lives (./runs locally, /tmp/runs on FC)
+                vids.append({"video": str(f),
+                             "poster": str(poster) if poster.is_file() else "",
                              "title": _read("screenplay.json", "title") or "",
                              "cost": _read("run_report.json", "total_usd"),
                              "caption": (_read("caption.txt") or "")[:200],
@@ -1534,7 +1537,7 @@ class H(BaseHTTPRequestHandler):
             # serves run artifacts (film + storyboard stills); runs/ only, no traversal
             types = {".mp4": "video/mp4", ".png": "image/png", ".jpg": "image/jpeg"}
             p = Path(unquote(self.path.split("p=", 1)[-1].split("&", 1)[0])).resolve()
-            runs = (Path(__file__).parent / "runs").resolve()
+            runs = Path(config.RUNS_DIR).resolve()
             if p.suffix in types and p.is_file() and p.is_relative_to(runs):
                 data = p.read_bytes()
                 self.send_response(200)
@@ -1600,7 +1603,7 @@ class H(BaseHTTPRequestHandler):
             note = str(req.get("note", "")).strip()[:200]
             if not img or not prompt:
                 return self._json(404, {"error": "shot not found"})
-            runs = (Path(__file__).parent / "runs").resolve()
+            runs = Path(config.RUNS_DIR).resolve()
             out = Path(img).resolve()
             if out.suffix != ".png" or not out.is_relative_to(runs) or not out.parent.is_dir():
                 return self._json(400, {"error": "invalid frame path"})
