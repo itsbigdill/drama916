@@ -200,7 +200,6 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   /* composer: the ChatGPT-style card pinned to the bottom of the page —
      textarea on top, length/cast dropdowns + Action inside, one glass card */
   #mqwrap { margin-top: auto; }
-  #trendsLabel { display: block; margin: 0 2px 8px; }
   /* .glass pins width:100%, so negative margins alone would only shift the
      card left — widen it explicitly to reach the rail's right edge too */
   #composer { margin: 0 -30px; width: calc(100% + 60px); padding: 12px 14px 12px; border-radius: 28px; }
@@ -457,7 +456,7 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
     background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,.75) 50%, transparent 65%);
     background-size: 240% 100%; animation: frost 2.4s linear infinite; }
   .vcell { position: relative; border-radius: 16px; overflow: hidden; cursor: pointer;
-           background: #0E0D18; box-shadow: 0 10px 26px rgba(34,33,58,.16); }
+           background: #0E0D18; }
   .vcell img, .vcell video { width: 100%; height: 190px; object-fit: cover; display: block; }
   .vcell img { transition: transform .3s ease; }
   .vcell:hover img { transform: scale(1.04); }
@@ -563,7 +562,6 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   </div>
 
   <div id="mqwrap">
-    <span id="trendsLabel" class="ol">Latest trends</span>
     <div id="mq"></div>
     <div id="composer" class="glass">
       <textarea id="log" placeholder="One line. A whole film."></textarea>
