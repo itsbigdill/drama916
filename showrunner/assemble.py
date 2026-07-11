@@ -50,12 +50,40 @@ def _dur(clip: Path) -> float:
     return float(out)
 
 
+def _vfilters(i: int, stretch: list[tuple[float, float]]) -> str:
+    """Per-clip video filters: optional slow-down + last-frame hold, then the
+    fps/timebase normalization the xfade chain requires."""
+    k, freeze = stretch[i]
+    f = f"setpts={k:.4f}*PTS," if k > 1.0 else ""
+    f += "fps=24"
+    if freeze > 0:
+        f += f",tpad=stop_mode=clone:stop_duration={freeze:.3f}"
+    return f + ",settb=AVTB,format=yuv420p"
+
+
 def assemble(clip_paths: list[Path], shots: list[dict], run_dir: Path,
              audio: dict[int, Path] | None = None) -> Path:
     """audio: shot_id -> wav of that shot's spoken line (optional)."""
     audio = audio or {}
     clip_paths = _normalize(clip_paths)
     durs = [_dur(p) for p in clip_paths]
+    # a shot must hold the screen until its spoken line is done, or the next
+    # line starts on top of it: slow the clip down (up to 1.6x reads as a
+    # dramatic beat), and hold the last frame for whatever is still missing
+    BREATH = 0.35  # small pause after a line before the next shot's cut
+    MAX_SLOW = 1.6
+    stretch = [(1.0, 0.0)] * len(clip_paths)  # (slow factor, freeze seconds)
+    for i, s in enumerate(shots[:len(clip_paths)]):
+        a = audio.get(s.get("id"))
+        if not a:
+            continue
+        tail = FADE if i < len(clip_paths) - 1 else 0.2
+        need = _dur(a) + BREATH + tail
+        if need > durs[i]:
+            k = min(need / durs[i], MAX_SLOW)
+            freeze = max(0.0, need - durs[i] * k)
+            stretch[i] = (k, freeze)
+            durs[i] = durs[i] * k + freeze
     # each shot's start on the crossfaded timeline (mirror the xfade offsets)
     offsets = [0.0]
     for i in range(1, len(clip_paths)):
@@ -69,13 +97,14 @@ def assemble(clip_paths: list[Path], shots: list[dict], run_dir: Path,
     if len(clip_paths) == 1:
         subprocess.run(
             ["ffmpeg", "-y", "-loglevel", "error", "-i", str(clip_paths[0].resolve()),
+             "-vf", _vfilters(0, stretch),
              "-c:v", "libx264", "-pix_fmt", "yuv420p", video_out.name],
             check=True, cwd=run_dir)
     else:
         cmd = ["ffmpeg", "-y", "-loglevel", "error"]
         for p in clip_paths:
             cmd += ["-i", str(p.resolve())]
-        chain = [f"[{i}:v]fps=24,settb=AVTB,format=yuv420p[p{i}]"
+        chain = [f"[{i}:v]{_vfilters(i, stretch)}[p{i}]"
                  for i in range(len(clip_paths))]
         prev = "[p0]"
         for i in range(1, len(clip_paths)):
