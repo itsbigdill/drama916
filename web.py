@@ -144,7 +144,7 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
     #formPane { min-height: calc(100vh - 130px); }
     #vstrip { margin: 0 -12px; padding: 6px 4px 40px; }
     #mq { margin: 0 -12px; padding: 4px 4px 12px; }
-    #composer { margin: 0 -12px; }
+    #composer { margin: 0 -12px; width: calc(100% + 24px); }
     #vstrip .vcell { flex-basis: 168px; }
     #vstrip .vcell img, #vstrip .vcell video { height: 298px; }
   }
@@ -200,7 +200,9 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   /* composer: the ChatGPT-style card pinned to the bottom of the page —
      textarea on top, length/cast dropdowns + Action inside, one glass card */
   #mqwrap { margin-top: auto; }
-  #composer { margin: 0 -30px; padding: 12px 14px 12px; border-radius: 28px; }
+  /* .glass pins width:100%, so negative margins alone would only shift the
+     card left — widen it explicitly to reach the rail's right edge too */
+  #composer { margin: 0 -30px; width: calc(100% + 60px); padding: 12px 14px 12px; border-radius: 28px; }
   #composer textarea { border: 0; background: transparent; box-shadow: none; border-radius: 0;
                        padding: 10px 10px 6px; min-height: 58px; max-height: 220px; font-size: 17px; }
   #composer textarea:focus { border: 0; box-shadow: none; }
