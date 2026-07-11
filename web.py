@@ -219,8 +219,8 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
               font-size: 12px; letter-spacing: .1em; }
   .crow .go::before { width: 24px; height: 24px; font-size: 13px; }
   /* recent generations: a horizontal 9:16 rail */
-  #recentHead { display: flex; justify-content: space-between; align-items: center;
-                margin: 4px -26px 12px; }
+  #recentHead { display: flex; justify-content: flex-start; align-items: center;
+                gap: 22px; margin: 4px -26px 12px; }
   .ghostlink { border: 0; background: transparent; cursor: pointer; padding: 4px 6px;
                font-family: "JetBrains Mono", monospace; font-size: 10px; font-weight: 700;
                letter-spacing: .14em; text-transform: uppercase; color: #B4B1CF;
@@ -551,7 +551,7 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   <div id="formPane">
 
   <div id="recentHead">
-    <button id="recentBtn" class="ghostlink on">Recent generations</button>
+    <button id="recentBtn" class="ghostlink on">Recent generations<span id="vcount" class="tcount"></span></button>
     <button id="draftsBtn" class="ghostlink">Drafts<span id="dcount" class="tcount"></span></button>
   </div>
   <div id="vstrip"></div>
@@ -659,6 +659,7 @@ function loadVids() {
   fetch("/videos?uid=" + encodeURIComponent(uid)).then(function (r) { return r.json(); }).then(function (d) {
     var vids = d.videos || [];
     vidsN = vids.length;
+    $("vcount").textContent = vidsN ? vidsN : "";
     if ($("dpanel").style.display === "none")
       $("vempty").style.display = vidsN ? "none" : "block";
     $("vstrip").innerHTML = vids.map(function (v, i) {
