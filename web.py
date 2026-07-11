@@ -142,11 +142,10 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
               min-height: calc(100vh - 190px); }
   @media (max-width: 680px) {
     #formPane { min-height: calc(100vh - 130px); }
-    #vstrip { margin: 0 -12px; padding: 6px 4px 40px; }
+    #vstrip { margin: 0 -12px; padding: 6px 4px 36px; }
     #mq { margin: 0 -12px; padding: 4px 4px 12px; }
     #composer { margin: 0 -12px; width: calc(100% + 24px); }
-    #vstrip .vcell { flex-basis: 168px; }
-    #vstrip .vcell img, #vstrip .vcell video { height: 298px; }
+    #vstrip .vcell { max-height: 440px; }
   }
   #runPane { align-self: stretch; }
 
@@ -228,20 +227,15 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   .ghostlink:hover, .ghostlink.on { color: #7C3AED; }
   /* the rail bleeds past the pane so card shadows fade out instead of being
      clipped by the scrollport — a hard clip line reads as a wrapper box */
-  #vstrip { display: flex; gap: 16px; overflow-x: auto; margin: 0 -30px; padding: 6px 4px 48px;
+  /* the rail flex-grows: cards are exactly as tall as the free space between
+     the header and the composer allows — no fixed sizes, no wasted space */
+  #vstrip { flex: 1 1 0; min-height: 0; display: flex; gap: 16px; overflow-x: auto;
+            margin: 0 -30px; padding: 6px 4px 44px;
             scrollbar-width: none; -ms-overflow-style: none; }
   #vstrip::-webkit-scrollbar { display: none; }
-  #vstrip .vcell { flex: 0 0 248px; }
-  #vstrip .vcell img, #vstrip .vcell video { height: 441px; }
-  /* shorter screens: shrink the rail so the composer stays above the fold */
-  @media (max-height: 980px) {
-    #vstrip .vcell { flex-basis: 204px; }
-    #vstrip .vcell img, #vstrip .vcell video { height: 363px; }
-  }
-  @media (max-height: 860px) {
-    #vstrip .vcell { flex-basis: 168px; }
-    #vstrip .vcell img, #vstrip .vcell video { height: 298px; }
-  }
+  #vstrip .vcell { flex: 0 0 auto; height: 100%; min-height: 236px; max-height: 680px;
+                   aspect-ratio: 9/16; }
+  #vstrip .vcell img, #vstrip .vcell video { width: 100%; height: 100%; }
   .ol { font-family: "JetBrains Mono", monospace; font-size: 10px; font-weight: 700;
         letter-spacing: .14em; text-transform: uppercase; color: #B4B1CF; padding-left: 3px; }
   .sel { position: relative; display: inline-flex; }
