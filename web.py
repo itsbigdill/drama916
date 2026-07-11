@@ -217,11 +217,22 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
                letter-spacing: .14em; text-transform: uppercase; color: #B4B1CF;
                transition: color .15s; }
   .ghostlink:hover, .ghostlink.on { color: #7C3AED; }
-  #vstrip { display: flex; gap: 12px; overflow-x: auto; padding: 2px 2px 8px;
+  /* the rail bleeds past the pane so card shadows fade out instead of being
+     clipped by the scrollport — a hard clip line reads as a wrapper box */
+  #vstrip { display: flex; gap: 16px; overflow-x: auto; margin: 0 -30px; padding: 6px 30px 48px;
             scrollbar-width: none; -ms-overflow-style: none; }
   #vstrip::-webkit-scrollbar { display: none; }
-  #vstrip .vcell { flex: 0 0 130px; }
-  #vstrip .vcell img, #vstrip .vcell video { height: 231px; }
+  #vstrip .vcell { flex: 0 0 196px; }
+  #vstrip .vcell img, #vstrip .vcell video { height: 348px; }
+  /* shorter screens: shrink the rail so the composer stays above the fold */
+  @media (max-height: 920px) {
+    #vstrip .vcell { flex-basis: 168px; }
+    #vstrip .vcell img, #vstrip .vcell video { height: 298px; }
+  }
+  @media (max-height: 800px) {
+    #vstrip .vcell { flex-basis: 144px; }
+    #vstrip .vcell img, #vstrip .vcell video { height: 256px; }
+  }
   .ol { font-family: "JetBrains Mono", monospace; font-size: 10px; font-weight: 700;
         letter-spacing: .14em; text-transform: uppercase; color: #B4B1CF; padding-left: 3px; }
   .sel { position: relative; display: inline-flex; }
