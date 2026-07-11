@@ -550,7 +550,7 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   <div id="formPane">
 
   <div id="recentHead">
-    <span class="ol">Recent generations</span>
+    <button id="recentBtn" class="ghostlink on">Recent generations</button>
     <button id="draftsBtn" class="ghostlink">Drafts<span id="dcount" class="tcount"></span></button>
   </div>
   <div id="vstrip"></div>
@@ -686,12 +686,14 @@ function showDrafts(on) {
   $("vstrip").style.display = on ? "none" : "flex";
   $("vempty").style.display = (!on && !vidsN) ? "block" : "none";
   $("draftsBtn").classList.toggle("on", on);
+  $("recentBtn").classList.toggle("on", !on);
   if (on) renderDrafts();
 }
 $("draftsBtn").onclick = function () {
   upsertDraft();  // keep whatever's currently typed
   showDrafts($("dpanel").style.display === "none");
 };
+$("recentBtn").onclick = function () { showDrafts(false); };
 
 // Drafts: a list of your saved loglines (kept automatically as you write/run)
 function getDrafts() { try { return JSON.parse(localStorage.getItem("sr_drafts") || "[]"); } catch (e) { return []; } }
