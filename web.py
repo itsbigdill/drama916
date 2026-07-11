@@ -123,7 +123,7 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   * { box-sizing: border-box; }
   body { margin: 0; min-height: 100vh; height: 100vh; font: 16px/1.5 -apple-system, system-ui;
          color: #1E1B39; background: #EFE9FF; display: flex; flex-direction: column;
-         align-items: center; padding: 40px 18px; overflow: hidden; }
+         align-items: center; padding: 22px 18px; overflow: hidden; }
   body.scroll { height: auto; overflow-x: hidden; overflow-y: auto; padding: 56px 18px; }
   @media (max-width: 680px) { body { padding: 20px 12px; } body.scroll { padding: 26px 12px; } }
   body::before { content: ""; position: fixed; inset: 0; z-index: -1;
@@ -134,7 +134,7 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
       linear-gradient(165deg, #ECE5FF 0%, #EEE6FF 45%, #F3ECFF 100%); }
   .mono { font-family: "JetBrains Mono", monospace; }
   .wordmark { font-family: "Unbounded", system-ui; font-weight: 800; font-size: 30px;
-              letter-spacing: -.02em; margin-bottom: 22px; color: #241A47; flex: 0 0 auto; }
+              letter-spacing: -.02em; margin-bottom: 14px; color: #241A47; flex: 0 0 auto; }
   .dot { background: linear-gradient(92deg, #A855F7, #E879F9);
          -webkit-background-clip: text; background-clip: text; color: transparent;
          text-shadow: 0 0 22px rgba(168,85,247,.45); }
@@ -200,6 +200,7 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   /* composer: the ChatGPT-style card pinned to the bottom of the page —
      textarea on top, length/cast dropdowns + Action inside, one glass card */
   #mqwrap { margin-top: auto; }
+  #trendsLabel { display: block; margin: 0 2px 8px; }
   /* .glass pins width:100%, so negative margins alone would only shift the
      card left — widen it explicitly to reach the rail's right edge too */
   #composer { margin: 0 -30px; width: calc(100% + 60px); padding: 12px 14px 12px; border-radius: 28px; }
@@ -231,7 +232,7 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   /* the rail flex-grows: cards are exactly as tall as the free space between
      the header and the composer allows — no fixed sizes, no wasted space */
   #vstrip { flex: 1 1 0; min-height: 0; display: flex; gap: 16px; overflow-x: auto;
-            margin: 0 -30px; padding: 6px 4px 44px;
+            margin: 0 -30px; padding: 6px 4px 18px;
             scrollbar-width: none; -ms-overflow-style: none; }
   #vstrip::-webkit-scrollbar { display: none; }
   #vstrip .vcell { flex: 0 0 auto; height: 100%; min-height: 236px; max-height: 680px;
@@ -562,6 +563,7 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   </div>
 
   <div id="mqwrap">
+    <span id="trendsLabel" class="ol">Latest trends</span>
     <div id="mq"></div>
     <div id="composer" class="glass">
       <textarea id="log" placeholder="One line. A whole film."></textarea>
