@@ -138,7 +138,9 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
          -webkit-background-clip: text; background-clip: text; color: transparent;
          text-shadow: 0 0 22px rgba(168,85,247,.45); }
   #panes { width: 100%; max-width: 940px; display: flex; flex-direction: column; gap: 20px; align-items: center; }
-  #formPane { max-width: 680px; }
+  #formPane { max-width: 680px; width: 100%; display: flex; flex-direction: column;
+              min-height: calc(100vh - 190px); }
+  @media (max-width: 680px) { #formPane { min-height: calc(100vh - 130px); } }
   #runPane { align-self: stretch; }
 
   .bcell { cursor: grab; }
@@ -165,17 +167,20 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
                      animation: shake .35s ease; }
   @keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
   .row { display: flex; gap: 10px; align-items: stretch; margin-top: 22px; }
-  .trhead { display: flex; justify-content: space-between; align-items: center; margin-top: 22px; }
-  .trtabs { display: inline-flex; border: 1px solid #E7E5F3; border-radius: 10px; overflow: hidden; background: #F4F3FA; }
-  .trtab { border: 0; background: transparent; cursor: pointer; padding: 5px 12px;
-           font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 700; color: #8B88AC; }
-  .trtab.on { background: #F3E8FF; color: #7C3AED; }
-  .trrow { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-  .tpill { background: #F4F3FA; border: 1px solid #E7E5F3; border-radius: 999px;
-           padding: 10px 18px; cursor: pointer; font-size: 13.5px; font-weight: 600; }
+  /* trending: an auto-scrolling, hand-scrollable ribbon right above the composer */
+  #mq { display: flex; gap: 8px; overflow-x: auto; padding: 4px 2px 12px;
+        scrollbar-width: none; -ms-overflow-style: none; }
+  #mq::-webkit-scrollbar { display: none; }
+  .tpill { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 8px;
+           background: rgba(255,255,255,.6); border: 1px solid rgba(255,255,255,.8);
+           border-radius: 999px; padding: 9px 12px 9px 17px; cursor: pointer;
+           font-size: 13px; font-weight: 600;
+           box-shadow: 0 4px 14px rgba(90,50,190,.08); }
+  .ttag { font-family: "JetBrains Mono", monospace; font-size: 9px; font-weight: 700;
+          letter-spacing: .08em; text-transform: uppercase; color: #A78BDF;
+          background: #F3E8FF; border-radius: 7px; padding: 3px 7px; }
   @media (max-width: 680px) {
-    .tpill { padding: 8px 13px; font-size: 12.5px; }
-    textarea { min-height: 116px; font-size: 17px; }
+    .tpill { padding: 8px 10px 8px 13px; font-size: 12.5px; }
   }
   .tpill { 
            color: #454363; transition: transform .1s, border-color .2s, background .2s; }
@@ -185,19 +190,40 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
            border: 1px solid #E7E5F3; animation: skel 1.1s ease-in-out infinite; }
   @keyframes skel { 50% { opacity: .45; } }
   textarea.flash { border-color: #B9AFFF; box-shadow: 0 0 0 4px rgba(108,92,231,.18); }
-  .opts { display: flex; flex-wrap: wrap; gap: 16px 26px; margin-top: 20px; }
-  .opt { display: flex; flex-direction: column; gap: 6px; }
+  /* composer: the ChatGPT-style card pinned to the bottom of the page —
+     textarea on top, length/cast dropdowns + Action inside, one glass card */
+  #mqwrap { margin-top: auto; }
+  #composer { padding: 12px 14px 12px; border-radius: 28px; }
+  #composer textarea { border: 0; background: transparent; box-shadow: none; border-radius: 0;
+                       padding: 10px 10px 6px; min-height: 58px; max-height: 220px; font-size: 17px; }
+  #composer textarea:focus { border: 0; box-shadow: none; }
+  #composer textarea { scrollbar-width: none; }
+  #composer textarea::-webkit-scrollbar { display: none; }
+  #composer:focus-within { box-shadow: 0 30px 80px rgba(90,50,190,.24), 0 4px 14px rgba(60,30,120,.08),
+                           0 0 0 4px rgba(168,85,247,.16), inset 0 1px 0 rgba(255,255,255,.85); }
+  #composer:has(textarea.invalid) { box-shadow: 0 30px 80px rgba(90,50,190,.20),
+                                    0 0 0 4px rgba(229,72,77,.16); animation: shake .35s ease; }
+  #composer:has(textarea.flash) { box-shadow: 0 30px 80px rgba(90,50,190,.24),
+                                  0 0 0 4px rgba(108,92,231,.2); }
+  .crow { display: flex; align-items: center; gap: 8px; padding: 2px 2px 0; }
+  .crow .go { flex: 0 0 auto; margin-left: auto; padding: 10px 20px 10px 13px;
+              font-size: 12px; letter-spacing: .1em; }
+  .crow .go::before { width: 24px; height: 24px; font-size: 13px; }
+  /* recent generations: a horizontal 9:16 rail */
+  #recentHead { display: flex; justify-content: space-between; align-items: center;
+                margin: 4px 2px 12px; }
+  .ghostlink { border: 0; background: transparent; cursor: pointer; padding: 4px 6px;
+               font-family: "JetBrains Mono", monospace; font-size: 10px; font-weight: 700;
+               letter-spacing: .14em; text-transform: uppercase; color: #B4B1CF;
+               transition: color .15s; }
+  .ghostlink:hover, .ghostlink.on { color: #7C3AED; }
+  #vstrip { display: flex; gap: 12px; overflow-x: auto; padding: 2px 2px 8px;
+            scrollbar-width: none; -ms-overflow-style: none; }
+  #vstrip::-webkit-scrollbar { display: none; }
+  #vstrip .vcell { flex: 0 0 130px; }
+  #vstrip .vcell img, #vstrip .vcell video { height: 231px; }
   .ol { font-family: "JetBrains Mono", monospace; font-size: 10px; font-weight: 700;
         letter-spacing: .14em; text-transform: uppercase; color: #B4B1CF; padding-left: 3px; }
-  .seg { display: inline-flex; gap: 0; border-radius: 12px; overflow: hidden;
-         border: 1px solid #E7E5F3; background: #F4F3FA; }
-  .seg .chip { border: 0; border-radius: 0; padding: 8px 13px; }
-  .seg .chip + .chip { border-left: 1px solid #E7E5F3; }
-  .chip { cursor: pointer; background: transparent; color: #8B88AC;
-          font-family: "JetBrains Mono", monospace; font-size: 12.5px; font-weight: 700;
-          transition: background .18s, color .18s, transform .1s; }
-  .chip:active { transform: scale(.94); }
-  .chip.on { background: #F3E8FF; color: #7C3AED; box-shadow: inset 0 0 0 1px #D8B4FE; }
   .sel { position: relative; display: inline-flex; }
   .sel::after { content: "\2304"; position: absolute; right: 12px; top: 50%;
                 transform: translateY(-58%); pointer-events: none; color: #8B88AC; font-size: 13px; }
@@ -414,16 +440,6 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
   .bcell.rf::after { content: ""; position: absolute; inset: 0; border-radius: inherit;
     background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,.75) 50%, transparent 65%);
     background-size: 240% 100%; animation: frost 2.4s linear infinite; }
-  #myvids { display: none; }
-  .vh { width: 100%; border: 0; background: transparent; cursor: pointer; text-align: left;
-        font-family: "Unbounded", system-ui; font-weight: 500; font-size: 15px; color: #26244A;
-        display: flex; align-items: center; gap: 8px; padding: 0 0 2px; }
-  .vh #vcount { color: #A9A6C6; font-family: "JetBrains Mono", monospace; font-size: 12px; font-weight: 700; }
-  .vchev { margin-left: auto; color: #8B88AC; font-size: 18px; transition: transform .2s; }
-  #myvids.open .vchev { transform: rotate(180deg); }
-  #myvids.open #vgrid { display: grid !important; }
-  #vgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-           gap: 12px; margin-top: 16px; }
   .vcell { position: relative; border-radius: 16px; overflow: hidden; cursor: pointer;
            background: #0E0D18; box-shadow: 0 10px 26px rgba(34,33,58,.16); }
   .vcell img, .vcell video { width: 100%; height: 190px; object-fit: cover; display: block; }
@@ -501,14 +517,7 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
     .barbtns .go, .barbtns .gray2 { flex: 1; padding: 0 12px; }
     #stBar .go { padding: 14px 12px; }
   }
-  #tabs { display: flex; gap: 8px; margin-bottom: 26px; }
-  .tab { border: 0; background: transparent; cursor: pointer; padding: 10px 20px; border-radius: 999px;
-         font-family: "JetBrains Mono", monospace; font-size: 13px; font-weight: 700; letter-spacing: .04em;
-         color: #8B88AC; transition: background .18s, color .18s; }
-  .tab:hover { color: #7C3AED; }
-  .tab.on { background: #F3E8FF; color: #7C3AED; box-shadow: inset 0 0 0 1px #D8B4FE; }
   .tcount { margin-left: 6px; color: #B4B1CF; font-size: 11px; }
-  .tab.on .tcount { color: #A78BDF; }
   .tabempty { color: #A9A6C6; font-size: 14px; padding: 26px 4px; text-align: center; line-height: 1.5; }
   #dgrid { display: flex; flex-direction: column; gap: 8px; }
   .dcell { display: flex; align-items: center; gap: 10px; padding: 13px 15px; border-radius: 14px;
@@ -524,38 +533,30 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
 <div class="wordmark">drama<span class="dot">916</span></div>
 
 <div id="panes">
-  <div id="formPane" class="glass">
-  <div id="tabs">
-    <button class="tab on" data-t="new">New</button>
-    <button class="tab" data-t="drafts">Drafts<span id="dcount" class="tcount"></span></button>
-    <button class="tab" data-t="videos">Videos<span id="vcount" class="tcount"></span></button>
-  </div>
+  <div id="formPane">
 
-  <div id="tab-new">
-  <textarea id="log" placeholder="One line. A whole film."></textarea>
-  <div class="trhead">
-    <span class="ol">Trending</span>
-    <span class="trtabs"><button class="trtab on" data-p="today">Today</button><button class="trtab" data-p="week">Week</button></span>
+  <div id="recentHead">
+    <span class="ol">Recent generations</span>
+    <button id="draftsBtn" class="ghostlink">Drafts<span id="dcount" class="tcount"></span></button>
   </div>
-  <div id="trends" class="trrow"></div>
-
-  <div class="opts">
-    <div class="opt"><span class="ol">Length</span><span class="seg" data-k="len"><button class="chip" data-v="3">15s</button><button class="chip on" data-v="6">30s</button><button class="chip" data-v="9">45s</button><button class="chip" data-v="12">60s</button></span></div>
-    <div class="opt"><span class="ol">Cast</span><span class="sel"><select id="selCast"><option value="">Auto</option><option value="realistic human characters">Real</option><option value="anthropomorphic fruit and vegetable characters">Fruits</option><option value="animal characters">Animals</option><option value="everyday objects brought to life as characters">Objects</option></select></span></div>
-  </div>
-  <div class="row">
-    <button id="go" class="go">Action</button>
-  </div>
-  <div id="formErr" style="display:none;margin-top:12px;font-size:14px;color:#E5484D"></div>
-  </div><!-- /tab-new -->
-
-  <div id="tab-drafts" style="display:none">
+  <div id="vstrip"></div>
+  <div id="vempty" class="tabempty" style="display:none">No films yet. Your finished films land here.</div>
+  <div id="dpanel" style="display:none">
     <div id="dgrid"></div>
     <div id="dempty" class="tabempty">Nothing saved yet. Start a line — it's kept here automatically.</div>
   </div>
-  <div id="tab-videos" style="display:none">
-    <div id="vgrid"></div>
-    <div id="vempty" class="tabempty">No films yet. Your finished films land here.</div>
+
+  <div id="mqwrap">
+    <div id="mq"></div>
+    <div id="composer" class="glass">
+      <textarea id="log" placeholder="One line. A whole film."></textarea>
+      <div class="crow">
+        <span class="sel"><select id="selLen" title="Length"><option value="3">15s</option><option value="6" selected>30s</option><option value="9">45s</option><option value="12">60s</option></select></span>
+        <span class="sel"><select id="selCast" title="Cast"><option value="">Auto</option><option value="realistic human characters">Real</option><option value="anthropomorphic fruit and vegetable characters">Fruits</option><option value="animal characters">Animals</option><option value="everyday objects brought to life as characters">Objects</option></select></span>
+        <button id="go" class="go">Action</button>
+      </div>
+      <div id="formErr" style="display:none;margin:8px 10px 4px;font-size:14px;color:#E5484D"></div>
+    </div>
   </div>
   </div><!-- /formPane -->
 
@@ -638,12 +639,14 @@ var t0 = null;
 var uid = localStorage.getItem("sr_uid");
 if (!uid) { uid = Math.random().toString(36).slice(2) + Date.now().toString(36);
             localStorage.setItem("sr_uid", uid); }
+var vidsN = 0;
 function loadVids() {
   fetch("/videos?uid=" + encodeURIComponent(uid)).then(function (r) { return r.json(); }).then(function (d) {
     var vids = d.videos || [];
-    $("vcount").textContent = vids.length ? vids.length : "";
-    $("vempty").style.display = vids.length ? "none" : "block";
-    $("vgrid").innerHTML = vids.map(function (v, i) {
+    vidsN = vids.length;
+    if ($("dpanel").style.display === "none")
+      $("vempty").style.display = vidsN ? "none" : "block";
+    $("vstrip").innerHTML = vids.map(function (v, i) {
       return '<div class="vcell" data-i="' + i + '">' +
              (v.poster ? '<img src="/video?p=' + encodeURIComponent(v.poster) + '" loading="lazy">'
                        : '<img alt="">') +
@@ -651,7 +654,7 @@ function loadVids() {
              '<div class="vmeta"><div class="vt">' + String(v.title || "Untitled").replace(/</g, "&lt;") + '</div>' +
              '<div class="vc">' + (v.cost != null ? "$" + (+v.cost).toFixed(2) : "") + '</div></div></div>';
     }).join("");
-    $("vgrid").querySelectorAll(".vcell").forEach(function (c) {
+    $("vstrip").querySelectorAll(".vcell").forEach(function (c) {
       c.onclick = function () {
         var v = vids[+c.dataset.i];
         c.innerHTML = '<video controls autoplay playsinline src="/video?p=' +
@@ -663,18 +666,18 @@ function loadVids() {
 }
 loadVids();
 
-// New / Drafts / Videos tabs live inside the form card
-function switchTab(t) {
-  upsertDraft();  // keep whatever's currently typed before we leave New
-  document.querySelectorAll(".tab").forEach(function (b) { b.classList.toggle("on", b.dataset.t === t); });
-  ["new", "drafts", "videos"].forEach(function (x) {
-    $("tab-" + x).style.display = x === t ? "block" : "none";
-  });
-  if (t === "drafts") renderDrafts();
+// Drafts live behind a toggle next to Recent generations
+function showDrafts(on) {
+  $("dpanel").style.display = on ? "block" : "none";
+  $("vstrip").style.display = on ? "none" : "flex";
+  $("vempty").style.display = (!on && !vidsN) ? "block" : "none";
+  $("draftsBtn").classList.toggle("on", on);
+  if (on) renderDrafts();
 }
-document.querySelectorAll(".tab").forEach(function (b) {
-  b.onclick = function () { switchTab(b.dataset.t); };
-});
+$("draftsBtn").onclick = function () {
+  upsertDraft();  // keep whatever's currently typed
+  showDrafts($("dpanel").style.display === "none");
+};
 
 // Drafts: a list of your saved loglines (kept automatically as you write/run)
 function getDrafts() { try { return JSON.parse(localStorage.getItem("sr_drafts") || "[]"); } catch (e) { return []; } }
@@ -699,11 +702,12 @@ function renderDrafts() {
     c.onclick = function (e) {
       if (e.target.classList.contains("ddel")) return;
       var x = getDrafts()[+c.dataset.i]; if (!x) return;
-      $("log").value = x.logline;
-      if (x.len) { opts.len = x.len; document.querySelectorAll('.seg[data-k="len"] .chip').forEach(function (ch) { ch.classList.toggle("on", ch.dataset.v === x.len); }); }
+      $("log").value = x.logline; fitLog();
+      if (x.len) { opts.len = x.len; $("selLen").value = x.len; }
       if (x.cast != null) { opts.cast = x.cast; $("selCast").value = x.cast; $("selCast").classList.toggle("set", !!x.cast); }
       saveDraft();
-      switchTab("new");
+      showDrafts(false);
+      $("log").focus();
     };
   });
   $("dgrid").querySelectorAll(".ddel").forEach(function (b) {
@@ -731,13 +735,8 @@ function restoreDraft() {
   try {
     var d = JSON.parse(localStorage.getItem("sr_draft") || "null");
     if (!d) return;
-    if (d.logline) $("log").value = d.logline;
-    if (d.len) {
-      opts.len = d.len;
-      document.querySelectorAll('.seg[data-k="len"] .chip').forEach(function (c) {
-        c.classList.toggle("on", c.dataset.v === d.len);
-      });
-    }
+    if (d.logline) { $("log").value = d.logline; fitLog(); }
+    if (d.len) { opts.len = d.len; $("selLen").value = d.len; }
     if (d.cast) { opts.cast = d.cast; $("selCast").value = d.cast; $("selCast").classList.toggle("set", !!d.cast); }
   } catch (e) {}
 }
@@ -751,57 +750,87 @@ window.addEventListener("load", function () {
 // drama916: always vertical 9:16, always drama. Cast optional (empty by default
 // so a named character renders as itself instead of being humanized).
 var opts = { fmt: "916", len: "6", genre: "", cast: "" };
-document.querySelectorAll(".seg").forEach(function (seg) {
-  var k = seg.dataset.k;
-  seg.querySelectorAll(".chip").forEach(function (ch) {
-    ch.onclick = function () {
-      seg.querySelectorAll(".chip").forEach(function (x) { x.classList.remove("on"); });
-      ch.classList.add("on");
-      opts[k] = ch.dataset.v;
-      saveDraft();
-    };
-  });
-});
+$("selLen").onchange = function () { opts.len = this.value; saveDraft(); };
 $("selCast").onchange = function () {
   opts.cast = this.value;
   this.classList.toggle("set", !!this.value);
   saveDraft();
 };
-$("log").addEventListener("input", saveDraft);
+// the composer grows with the text, like a chat input
+function fitLog() {
+  var f = $("log");
+  f.style.height = "auto";
+  f.style.height = Math.min(f.scrollHeight, 220) + "px";
+}
+$("log").addEventListener("input", function () { fitLog(); saveDraft(); });
+$("log").addEventListener("keydown", function (e) {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("go").click(); }
+});
 
-// тренд-скаут: живі теми → тап вставляє логлайн
-var trCache = {};
-function renderTrends(list) {
-  $("trends").innerHTML = list.map(function (tr, i) {
+// тренд-скаут: today + week упереміш в одній стрічці над композером;
+// їде сама, зупиняється під курсором/пальцем, гортається руками
+function renderMarquee(list) {
+  var mq = $("mq");
+  if (!list.length) { mq.innerHTML = ""; return; }
+  var html = list.map(function (tr, i) {
     return '<button class="tpill" data-i="' + i + '" title="' +
-           (tr.why || "").replace(/"/g, "&quot;") + '">' + tr.topic + '</button>';
+           (tr.why || "").replace(/"/g, "&quot;") + '">' + esc2(tr.topic) +
+           '<span class="ttag">' + (tr.period === "week" ? "this week" : "today") + '</span></button>';
   }).join("");
-  $("trends").querySelectorAll(".tpill").forEach(function (c) {
+  mq.innerHTML = html;
+  // duplicate only when the ribbon overflows — that's what makes the loop seamless
+  if (mq.scrollWidth > mq.clientWidth + 30) { mq.innerHTML = html + html; mq.dataset.loop = "1"; }
+  else mq.dataset.loop = "";
+  mq.querySelectorAll(".tpill").forEach(function (c) {
     c.onclick = function () {
       var tr = list[+c.dataset.i];
       var f = $("log");
-      f.value = tr.logline;
+      f.value = tr.logline; fitLog(); saveDraft();
       f.classList.add("flash");
       setTimeout(function () { f.classList.remove("flash"); }, 900);
     };
   });
 }
-function loadTrends(period) {
-  if (trCache[period]) { renderTrends(trCache[period]); return; }
-  $("trends").innerHTML = '<span class="tskel"></span><span class="tskel"></span><span class="tskel"></span><span class="tskel"></span>';
-  fetch("/trends?period=" + period).then(function (r) { return r.json(); }).then(function (d) {
-    trCache[period] = d.trends || [];
-    renderTrends(trCache[period]);
-  }).catch(function () { $("trends").innerHTML = ""; });
+function loadTrends() {
+  $("mq").innerHTML = '<span class="tskel"></span><span class="tskel"></span><span class="tskel"></span><span class="tskel"></span><span class="tskel"></span>';
+  Promise.all(["today", "week"].map(function (p) {
+    return fetch("/trends?period=" + p).then(function (r) { return r.json(); })
+      .then(function (d) { return (d.trends || []).map(function (x) { x.period = p; return x; }); })
+      .catch(function () { return []; });
+  })).then(function (rr) {
+    var mixed = [];  // interleave so both periods surface up front
+    for (var i = 0; i < Math.max(rr[0].length, rr[1].length); i++) {
+      if (rr[0][i]) mixed.push(rr[0][i]);
+      if (rr[1][i]) mixed.push(rr[1][i]);
+    }
+    renderMarquee(mixed);
+  });
 }
-document.querySelectorAll(".trtab").forEach(function (b) {
-  b.onclick = function () {
-    document.querySelectorAll(".trtab").forEach(function (x) { x.classList.remove("on"); });
-    b.classList.add("on");
-    loadTrends(b.dataset.p);
-  };
-});
-loadTrends("today");
+loadTrends();
+var mqPause = false, mqResumeT = null;
+$("mq").addEventListener("pointerenter", function () { mqPause = true; });
+$("mq").addEventListener("pointerleave", function () { mqPause = false; });
+$("mq").addEventListener("touchstart", function () {
+  mqPause = true; clearTimeout(mqResumeT);
+}, { passive: true });
+$("mq").addEventListener("touchend", function () {
+  clearTimeout(mqResumeT);
+  mqResumeT = setTimeout(function () { mqPause = false; }, 1800);
+}, { passive: true });
+// scrollLeft rounds to whole pixels, so a fractional step must accumulate
+// in its own float — otherwise +0.45 rounds back to 0 and the ribbon stalls
+var mqX = 0;
+$("mq").addEventListener("scroll", function () { if (mqPause) mqX = this.scrollLeft; });
+(function mqTick() {
+  var mq = $("mq");
+  if (mq && mq.dataset.loop && !mqPause) {
+    var half = mq.scrollWidth / 2;
+    mqX += 0.45;
+    if (mqX >= half) mqX -= half;
+    mq.scrollLeft = mqX;
+  }
+  requestAnimationFrame(mqTick);
+})();
 
 // rotating idea placeholder
 var IDEAS = [
