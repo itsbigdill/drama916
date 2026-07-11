@@ -1,0 +1,47 @@
+# Alibaba Cloud Function Compute 3.0 — custom-container deploy for drama916.
+# Deploy with Serverless Devs:  s deploy   (see DEPLOY.md)
+#
+# Fill the three <PLACEHOLDERS> below. The app keeps one run's state in memory
+# and the UI long-polls it, so we pin ONE always-warm instance (provision.target
+# = 1) rather than letting FC recycle instances mid-render.
+edition: 3.0.0
+name: drama916
+access: default
+
+vars:
+  region: ap-southeast-1            # Singapore — same region as DashScope intl
+  # ACR image you push in DEPLOY.md, e.g.
+  # registry-intl.ap-southeast-1.aliyuncs.com/<namespace>/drama916:latest
+  image: <ACR_IMAGE_URI>
+
+resources:
+  drama916:
+    component: fc3
+    props:
+      region: ${vars.region}
+      functionName: drama916
+      description: One logline in, a voiced vertical drama out.
+      runtime: custom-container
+      customContainerConfig:
+        image: ${vars.image}
+        port: 9000
+      cpu: 1
+      memorySize: 2048              # ffmpeg + image refs; bump to 3072 if OOM
+      diskSize: 512
+      timeout: 600                  # kickoff returns fast; polls are short
+      instanceConcurrency: 30       # one warm instance serves all of a user's polls
+      environmentVariables:
+        DASHSCOPE_API_KEY: ${env(DASHSCOPE_API_KEY)}
+        PORT: '9000'
+      triggers:
+        - triggerName: httpTrigger
+          triggerType: http
+          triggerConfig:
+            authType: anonymous     # public demo URL
+            methods:
+              - GET
+              - POST
+      # keep exactly one instance always warm so in-memory run state survives
+      provisionConfig:
+        target: 1
+        alwaysAllocateCPU: true

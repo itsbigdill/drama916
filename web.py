@@ -6,6 +6,7 @@ Stdlib-only server (no new deps). One run at a time (it's a demo, not a farm).
 """
 
 import json
+import os
 import threading
 from urllib.parse import unquote
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -17,7 +18,7 @@ load_dotenv()
 
 from showrunner import pipeline  # noqa: E402
 
-PORT = 8090
+PORT = int(os.environ.get("PORT", "8090"))  # hosts (FC/Render/etc.) inject PORT
 
 # single-run job state, updated by the pipeline's progress callback
 state = {"running": False, "stage": "idle", "detail": "", "video": None,

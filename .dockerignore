@@ -1,0 +1,11 @@
+# the full run archive (595M) — only runs_seed/ is baked in
+runs/
+.venv/
+.env
+.git/
+.gitignore
+__pycache__/
+**/__pycache__/
+*.pyc
+web_test*.py
+.DS_Store
