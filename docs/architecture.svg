@@ -1,0 +1,131 @@
+<svg width="100%" viewBox="0 0 1080 772" xmlns="http://www.w3.org/2000/svg" font-family="Inter, -apple-system, system-ui, sans-serif" role="img">
+<title>drama916 system architecture</title>
+<desc>A browser client calls a Python backend on Alibaba Function Compute, which runs an agent pipeline — script, shot plan, and a director-critic loop on cheap text before spending on expensive image and video generation — calling Qwen and HappyHorse models on Alibaba Model Studio, with the code package and seed films on Alibaba OSS.</desc>
+<defs>
+<marker id="ah" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#8A83AD"/></marker>
+<marker id="ap" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#7C3AED"/></marker>
+<marker id="aa" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#E0900A"/></marker>
+</defs>
+<rect x="0" y="0" width="1080" height="772" rx="20" fill="#F5F2FC"/>
+
+<text x="44" y="52" font-size="31" font-weight="800" letter-spacing="-.5" fill="#241A47">drama<tspan fill="#A855F7">916</tspan></text>
+<text x="200" y="52" font-size="14.5" fill="#6E6A93">system architecture — one logline in, a voiced vertical drama out</text>
+
+<rect x="392" y="96" width="296" height="60" rx="13" fill="#FFFFFF" stroke="#D9D3EC" stroke-width="1.5"/>
+<text x="540" y="122" text-anchor="middle" font-size="14" font-weight="700" fill="#26224A">Browser · drama916 web app</text>
+<text x="540" y="141" text-anchor="middle" font-size="11.5" fill="#8A83AD">composer → live studio → premiere</text>
+
+<line x1="540" y1="156" x2="540" y2="196" stroke="#8A83AD" stroke-width="1.6" marker-end="url(#ah)"/>
+<text x="552" y="180" font-size="11.5" fill="#6E6A93">HTTPS · drama916.coralglove.com (Cloudflare)</text>
+
+<rect x="40" y="200" width="1000" height="300" rx="16" fill="#ECE6FB" stroke="#7C3AED" stroke-width="2"/>
+<text x="60" y="228" font-size="13.5" font-weight="800" fill="#5B2FC7">ALIBABA FUNCTION COMPUTE — Python 3.10 web function · Singapore</text>
+<text x="60" y="246" font-size="11.5" fill="#7A6BB0">stateful orchestrator · ffmpeg bundled · writes to /tmp</text>
+
+<rect x="60" y="262" width="404" height="150" rx="12" fill="#FFFFFF" stroke="#E1D8F5" stroke-width="1.5"/>
+<text x="76" y="286" font-size="11.5" font-weight="700" fill="#5B2FC7">TEXT — cents · iterate freely</text>
+<path d="M212 312 C 212 296, 330 296, 330 312" fill="none" stroke="#E0900A" stroke-width="1.6" marker-end="url(#aa)"/>
+<text x="271" y="300" text-anchor="middle" font-size="10.5" fill="#B9800E">refine ≤3×</text>
+<g>
+<rect x="76" y="318" width="118" height="76" rx="10" fill="#F3EEFC" stroke="#C9B8F2"/>
+<text x="135" y="350" text-anchor="middle" font-size="12.5" font-weight="700" fill="#4A2AA8">Script</text>
+<text x="135" y="368" text-anchor="middle" font-size="10.5" fill="#8A7BC0">screenplay</text>
+<text x="135" y="382" text-anchor="middle" font-size="9.5" fill="#A99AD6">qwen3.7-max</text>
+</g>
+<line x1="194" y1="356" x2="210" y2="356" stroke="#8A83AD" stroke-width="1.4" marker-end="url(#ah)"/>
+<g>
+<rect x="212" y="318" width="118" height="76" rx="10" fill="#F3EEFC" stroke="#C9B8F2"/>
+<text x="271" y="350" text-anchor="middle" font-size="12.5" font-weight="700" fill="#4A2AA8">Board</text>
+<text x="271" y="368" text-anchor="middle" font-size="10.5" fill="#8A7BC0">shot plan</text>
+<text x="271" y="382" text-anchor="middle" font-size="9.5" fill="#A99AD6">qwen3.7-plus</text>
+</g>
+<line x1="330" y1="356" x2="346" y2="356" stroke="#8A83AD" stroke-width="1.4" marker-end="url(#ah)"/>
+<g>
+<rect x="346" y="318" width="106" height="76" rx="10" fill="#F3EEFC" stroke="#C9B8F2"/>
+<text x="399" y="350" text-anchor="middle" font-size="12.5" font-weight="700" fill="#4A2AA8">Critic</text>
+<text x="399" y="368" text-anchor="middle" font-size="10.5" fill="#8A7BC0">QA loop</text>
+<text x="399" y="382" text-anchor="middle" font-size="9.5" fill="#A99AD6">qwen3.7-plus</text>
+</g>
+
+<g>
+<rect x="476" y="318" width="88" height="76" rx="10" fill="#FFFFFF" stroke="#C9B8F2" stroke-dasharray="4 3"/>
+<text x="520" y="348" text-anchor="middle" font-size="12" font-weight="700" fill="#4A2AA8">Approve</text>
+<text x="520" y="366" text-anchor="middle" font-size="10" fill="#8A7BC0">human</text>
+<text x="520" y="380" text-anchor="middle" font-size="10" fill="#8A7BC0">gate</text>
+</g>
+<line x1="464" y1="356" x2="476" y2="356" stroke="#8A83AD" stroke-width="1.4" marker-end="url(#ah)"/>
+<line x1="564" y1="356" x2="576" y2="356" stroke="#8A83AD" stroke-width="1.4" marker-end="url(#ah)"/>
+
+<rect x="576" y="262" width="444" height="150" rx="12" fill="#FBF2DE" stroke="#EBC98A" stroke-width="1.5"/>
+<text x="592" y="286" font-size="11.5" font-weight="700" fill="#9A6708">IMAGE + VIDEO + VOICE — dollars · render ONCE</text>
+<g>
+<rect x="592" y="318" width="100" height="76" rx="10" fill="#FFFFFF" stroke="#E4C98F"/>
+<text x="642" y="348" text-anchor="middle" font-size="12" font-weight="700" fill="#26224A">Stills</text>
+<text x="642" y="366" text-anchor="middle" font-size="10" fill="#8A83AD">cast + frames</text>
+<text x="642" y="380" text-anchor="middle" font-size="9.5" fill="#B0A8C8">qwen-image-2</text>
+</g>
+<line x1="692" y1="356" x2="706" y2="356" stroke="#8A83AD" stroke-width="1.4" marker-end="url(#ah)"/>
+<g>
+<rect x="706" y="318" width="100" height="76" rx="10" fill="#FFFFFF" stroke="#E4C98F"/>
+<text x="756" y="348" text-anchor="middle" font-size="12" font-weight="700" fill="#26224A">Film</text>
+<text x="756" y="366" text-anchor="middle" font-size="10" fill="#8A83AD">still → clip</text>
+<text x="756" y="380" text-anchor="middle" font-size="9.5" fill="#B0A8C8">happyhorse i2v</text>
+</g>
+<line x1="806" y1="356" x2="820" y2="356" stroke="#8A83AD" stroke-width="1.4" marker-end="url(#ah)"/>
+<g>
+<rect x="820" y="318" width="90" height="76" rx="10" fill="#FFFFFF" stroke="#E4C98F"/>
+<text x="865" y="348" text-anchor="middle" font-size="12" font-weight="700" fill="#26224A">Voice</text>
+<text x="865" y="366" text-anchor="middle" font-size="10" fill="#8A83AD">per line</text>
+<text x="865" y="380" text-anchor="middle" font-size="9.5" fill="#B0A8C8">qwen3-tts</text>
+</g>
+<line x1="910" y1="356" x2="924" y2="356" stroke="#8A83AD" stroke-width="1.4" marker-end="url(#ah)"/>
+<g>
+<rect x="924" y="318" width="82" height="76" rx="10" fill="#FFFFFF" stroke="#E4C98F"/>
+<text x="965" y="348" text-anchor="middle" font-size="12" font-weight="700" fill="#26224A">Cut</text>
+<text x="965" y="366" text-anchor="middle" font-size="10" fill="#8A83AD">xfade+mix</text>
+<text x="965" y="380" text-anchor="middle" font-size="9.5" fill="#B0A8C8">ffmpeg</text>
+</g>
+
+<rect x="60" y="428" width="946" height="54" rx="10" fill="#FFFFFF" stroke="#E1D8F5"/>
+<text x="76" y="450" font-size="12" font-weight="700" fill="#5B2FC7">Cost ledger</text>
+<text x="76" y="468" font-size="11" fill="#8A83AD">records every token · API call · video-second → runs/&lt;id&gt;/run_report.json (token-budget optimization, with receipts)</text>
+<text x="838" y="450" font-size="12" font-weight="700" fill="#26224A" text-anchor="end">▶ final.mp4</text>
+<text x="990" y="450" font-size="11" fill="#8A83AD" text-anchor="end">9:16 · voiced · captioned</text>
+<text x="990" y="468" font-size="11" fill="#8A83AD" text-anchor="end">+ TikTok caption &amp; hashtags</text>
+
+<line x1="300" y1="500" x2="300" y2="556" stroke="#7C3AED" stroke-width="1.8" marker-end="url(#ap)"/>
+<text x="312" y="530" font-size="11.5" fill="#6E6A93">model calls · dashscope-intl API</text>
+<line x1="900" y1="500" x2="900" y2="556" stroke="#0E9C8A" stroke-width="1.8" marker-end="url(#ah)"/>
+<text x="888" y="530" font-size="11.5" fill="#6E6A93" text-anchor="end">code + films</text>
+
+<rect x="40" y="560" width="740" height="150" rx="14" fill="#F3EEFC" stroke="#7C3AED" stroke-width="1.8"/>
+<text x="60" y="588" font-size="13.5" font-weight="800" fill="#5B2FC7">ALIBABA MODEL STUDIO / DASHSCOPE — Singapore</text>
+<text x="60" y="606" font-size="11.5" fill="#7A6BB0">every unit of intelligence runs on Alibaba Cloud (OpenAI-compatible + native endpoints)</text>
+<g font-size="11.5" font-weight="700">
+<rect x="60" y="624" width="132" height="66" rx="9" fill="#FFFFFF" stroke="#C9B8F2"/>
+<text x="126" y="652" text-anchor="middle" fill="#4A2AA8">qwen3.7-max</text>
+<text x="126" y="670" text-anchor="middle" font-size="10" font-weight="500" fill="#8A7BC0">writer</text>
+<rect x="200" y="624" width="132" height="66" rx="9" fill="#FFFFFF" stroke="#C9B8F2"/>
+<text x="266" y="652" text-anchor="middle" fill="#4A2AA8">qwen3.7-plus</text>
+<text x="266" y="670" text-anchor="middle" font-size="10" font-weight="500" fill="#8A7BC0">planner + critic</text>
+<rect x="340" y="624" width="140" height="66" rx="9" fill="#FFFFFF" stroke="#C9B8F2"/>
+<text x="410" y="652" text-anchor="middle" fill="#4A2AA8">qwen-image-2.0</text>
+<text x="410" y="670" text-anchor="middle" font-size="10" font-weight="500" fill="#8A7BC0">stills</text>
+<rect x="488" y="624" width="150" height="66" rx="9" fill="#FFFFFF" stroke="#E4C98F"/>
+<text x="563" y="652" text-anchor="middle" fill="#9A6708">happyhorse-1.1</text>
+<text x="563" y="670" text-anchor="middle" font-size="10" font-weight="500" fill="#B98E36">image → video</text>
+<rect x="646" y="624" width="118" height="66" rx="9" fill="#FFFFFF" stroke="#C9B8F2"/>
+<text x="705" y="652" text-anchor="middle" fill="#4A2AA8">qwen3-tts</text>
+<text x="705" y="670" text-anchor="middle" font-size="10" font-weight="500" fill="#8A7BC0">voice</text>
+</g>
+
+<rect x="800" y="560" width="240" height="150" rx="14" fill="#E1F5F1" stroke="#0E9C8A" stroke-width="1.8"/>
+<text x="820" y="588" font-size="13.5" font-weight="800" fill="#0B7C6E">ALIBABA OSS</text>
+<text x="820" y="612" font-size="11.5" fill="#3C9184">deploy code package</text>
+<text x="820" y="632" font-size="11.5" fill="#3C9184">(drama916-fc.zip)</text>
+<text x="820" y="656" font-size="11.5" fill="#3C9184">+ seeded showcase films</text>
+<text x="820" y="684" font-size="11" fill="#67AFA4">Singapore · same region as FC</text>
+
+<rect x="40" y="726" width="1000" height="30" rx="9" fill="#FBF2DE" stroke="#EBC98A"/>
+<text x="540" y="746" text-anchor="middle" font-size="12" font-weight="600" fill="#9A6708">The critic converges the story on paper — ~1–2¢ of text — BEFORE any video renders, so a $3–7 film is shot once, not burned-and-reshot.</text>
+</svg>
