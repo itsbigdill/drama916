@@ -882,8 +882,10 @@ function renderMarquee(list) {
   var mq = $("mq");
   if (!list.length) { mq.innerHTML = ""; return; }
   var html = list.map(function (tr, i) {
+    // пілюля = заголовок ІДЕЇ фільму; сам тренд і "чому зараз" — у тултіпі
+    var tip = (tr.topic ? tr.topic + ": " : "") + (tr.why || "");
     return '<button class="tpill" data-i="' + i + '" title="' +
-           (tr.why || "").replace(/"/g, "&quot;") + '">' + esc2(tr.topic) +
+           tip.replace(/"/g, "&quot;") + '">' + esc2(tr.title || tr.topic) +
            '<span class="ttag">' + (tr.period === "week" ? "this week" : "today") + '</span></button>';
   }).join("");
   mq.innerHTML = html;

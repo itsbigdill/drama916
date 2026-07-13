@@ -106,7 +106,8 @@ names, NO brands, NOTHING sexual, NO politics, war, violence or tragedy — upbe
 family-friendly fictional characters that clearly wink at the event.
 
 Reply ONLY JSON:
-{{"trends": [{{"topic": "PILL LABEL, 2-3 words max",
+{{"trends": [{{"topic": "the trend itself, 2-3 words (e.g. 'Wimbledon Finals')",
+"title": "a catchy TITLE for the mini-drama idea, 2-4 words, like a film name on a poster — the story's hook, NOT the trend's name (e.g. 'The Fence Derby', 'Grandma Aces It')",
 "why": "one short line: what exactly happened and when",
 "logline": "2-3 sentence scenario"}}]}}"""
 
@@ -140,7 +141,8 @@ war, violence or tragedy — upbeat, family-friendly fictional characters that w
 the event.
 
 Reply ONLY JSON:
-{"trends": [{"topic": "PILL LABEL, 2-3 words max",
+{"trends": [{"topic": "the trend itself, 2-3 words",
+"title": "a catchy TITLE for the mini-drama idea, 2-4 words, like a film name on a poster — the story's hook, NOT the trend's name",
 "why": "one short line: what exactly happened and when",
 "logline": "2-3 sentence scenario"}]}"""
 
@@ -219,17 +221,19 @@ def _clean(cands: list[dict]) -> list[dict]:
     """Moderation/niche blocklists + max 1 topic per leading keyword."""
     out, seen_lead = [], set()
     for t in cands:
-        topic, why, logline = (str(t.get(k, "")).strip() for k in ("topic", "why", "logline"))
+        topic, title, why, logline = (str(t.get(k, "")).strip()
+                                      for k in ("topic", "title", "why", "logline"))
         if not topic or not logline:
             continue
-        blob = f"{topic} {why} {logline}".lower()
+        blob = f"{topic} {title} {why} {logline}".lower()
         if any(b in blob for b in BLOCKED) or any(b in blob for b in NICHE):
             continue
         lead = _lead_word(topic)
         if lead in seen_lead:
             continue  # three 'Anime …' pills → one
         seen_lead.add(lead)
-        out.append({"topic": _pill(topic), "why": why[:110], "logline": logline[:400]})
+        out.append({"topic": _pill(topic), "title": _pill(title or topic),
+                    "why": why[:110], "logline": logline[:400]})
     return out
 
 
