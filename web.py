@@ -909,10 +909,27 @@ function loadTrends() {
       .then(function (d) { return (d.trends || []).map(function (x) { x.period = p; return x; }); })
       .catch(function () { return []; });
   })).then(function (rr) {
-    var mixed = [];  // interleave so both periods surface up front
+    // interleave so both periods surface up front, but the same trend can live
+    // in both caches ('Nolan's Odyssey' today AND this week) — dedupe across
+    // periods by significant words of the trend+title, today wins
+    var GENERIC = { fever: 1, finals: 1, final: 1, hype: 1, craze: 1, drama: 1, movie: 1,
+                    film: 1, trailer: 1, premiere: 1, live: 1, watch: 1, style: 1, story: 1 };
+    var seenWords = {};
+    function sigWords(tr) {
+      var words = ((tr.topic || "") + " " + (tr.title || "")).toLowerCase().match(/[a-z]{5,}/g) || [];
+      return words.filter(function (w) { return !GENERIC[w]; });
+    }
+    var mixed = [];
+    function pushUnique(tr) {
+      if (!tr) return;
+      var ws = sigWords(tr);
+      for (var k = 0; k < ws.length; k++) if (seenWords[ws[k]]) return;  // same trend already in
+      ws.forEach(function (w) { seenWords[w] = 1; });
+      mixed.push(tr);
+    }
     for (var i = 0; i < Math.max(rr[0].length, rr[1].length); i++) {
-      if (rr[0][i]) mixed.push(rr[0][i]);
-      if (rr[1][i]) mixed.push(rr[1][i]);
+      pushUnique(rr[0][i]);   // today перший — він свіжіший
+      pushUnique(rr[1][i]);
     }
     renderMarquee(mixed);
   });
