@@ -25,7 +25,7 @@ def _headers():
 
 def generate_clip(shot: dict, out_path: Path, ledger: Ledger, dry_run: bool,
                   size: str = config.VIDEO_SIZE,
-                  first_frame: Path | None = None) -> Path:
+                  first_frame: Path | None = None, _retry: bool = False) -> Path:
     if dry_run:
         _placeholder_clip(shot, out_path, size)
         ledger.record("video_dryrun", config.MODEL_VIDEO)
@@ -69,7 +69,44 @@ def generate_clip(shot: dict, out_path: Path, ledger: Ledger, dry_run: bool,
     tier = "1080" if body["model"] == config.MODEL_VIDEO_I2V else "720"
     ledger.record("video", body["model"], clips=1,
                   clip_cost=config.CLIP_SECONDS * config.VIDEO_RATE_PER_SEC[tier])
+
+    # HappyHorse's output moderation sometimes returns SUCCEEDED with an all-black
+    # video instead of FAILED — which then gets cut into the film as a black hole
+    # (seen live: a hand-tap networking shot). Detect it and retry ONCE with a
+    # sanitized prompt; still black → honest failure, never a silent fallback.
+    if _is_black(out_path):
+        if _retry:
+            raise RuntimeError(
+                f"shot {shot['id']}: HappyHorse returned a black video twice "
+                f"(output moderation) — rewrite the shot's action and refilm")
+        from .storyboard import _sanitized
+        soft = dict(shot)
+        soft["prompt"] = _sanitized(shot["prompt"], ledger)
+        print(f"  shot {shot['id']}: black video from the model — retrying with softened prompt")
+        return generate_clip(soft, out_path, ledger, dry_run, size=size,
+                             first_frame=first_frame, _retry=True)
     return out_path
+
+
+def _is_black(clip: Path, luma_threshold: float = 24.0, share: float = 0.85) -> bool:
+    """True when ≥`share` of the clip is essentially black (mean luma below
+    threshold). Uses ffmpeg blackdetect — local, free, ~a second."""
+    try:
+        r = subprocess.run(
+            ["ffmpeg", "-hide_banner", "-nostats", "-i", str(clip),
+             "-vf", f"blackdetect=d=0.1:pix_th={luma_threshold / 255:.3f}",
+             "-an", "-f", "null", "-"],
+            capture_output=True, text=True, timeout=120)
+        import re as _re
+        black = sum(float(m) for m in _re.findall(r"black_duration:([\d.]+)", r.stderr))
+        dur_m = _re.search(r"Duration: (\d+):(\d+):([\d.]+)", r.stderr)
+        if not dur_m:
+            return False
+        h, m_, s = float(dur_m.group(1)), float(dur_m.group(2)), float(dur_m.group(3))
+        total = h * 3600 + m_ * 60 + s
+        return total > 0 and black / total >= share
+    except Exception:
+        return False  # детектор не має вбивати нормальний кліп
 
 
 def _placeholder_clip(shot: dict, out_path: Path, size: str = config.VIDEO_SIZE):
