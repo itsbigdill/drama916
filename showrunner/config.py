@@ -21,17 +21,19 @@ MODEL_TTS = "qwen3-tts-flash"
 TTS_VOICE = "Cherry"              # fallback
 VOICE_BY_GENDER = {"female": "Cherry", "male": "Ethan", "neutral": "Nofish"}
 COST_PER_TTS_LINE_USD = 0.002    # rough; qwen3-tts-flash is per-character and cheap
-COST_PER_STILL_USD = 0.04         # qwen-image-2.0-pro, ще не підтверджено консоллю
+# Calibrated against real coupon redemptions (July 15, 2026, 6-shot film):
+# images billed ~$0.60 for a cast+stills pass (~8 images) -> ~$0.075 each.
+COST_PER_STILL_USD = 0.075
 IMAGE_MIN_GAP_SEC = 12            # min seconds between qwen-image calls (QPM guard)
-# happyhorse-1.1 intl list price per OUTPUT second (July 2026): ~0.9 RMB/s 720p,
-# ~1.2 RMB/s 1080p -> USD; promo in console may be ~40% lower
-VIDEO_RATE_PER_SEC = {"720": 0.125, "1080": 0.165}
+# happyhorse-1.1 i2v REAL billing: $0.54 per 5s 1080p clip = $0.108/s (list
+# price said ~$0.165 — the console promo is real). 720p unverified: scaled by
+# the same promo ratio from its $0.125 list estimate.
+VIDEO_RATE_PER_SEC = {"720": 0.082, "1080": 0.108}
 VIDEO_SIZE = "1280*720"
 CLIP_SECONDS = 5
 
-# Budget rails — UPDATE COST_PER_CLIP after the first real generation on July 5,
-# the console shows the actual charge per task.
-COST_PER_CLIP_USD = 0.85          # 5s @ 1080p list (i2v upscales to 1080)
+# Budget rails — calibrated July 15 against real coupon redemptions.
+COST_PER_CLIP_USD = 0.54          # 5s @ 1080p i2v, actual billed rate
 MAX_BUDGET_USD = 20.00            # hard stop for a single run
 MAX_CRITIC_ROUNDS = 3
 TARGET_SHOTS = 12                 # ~60s film at 5s/clip
