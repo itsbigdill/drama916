@@ -11,23 +11,26 @@ already-finished film (e.g. "Gods of the Pitch") ready in Recent generations.
 
 ---
 
-### 0:00–0:15 — Hook (landing page)
-> "This is drama916. You give it one sentence, and it gives you a finished,
-> voiced, vertical short film. Watch."
+### 0:00–0:20 — The problem (cold open, over the films rail)
+> "Vertical drama is eating the internet — short films built for a phone screen.
+> But here's the creator's math: one short takes about four hours to make —
+> script, shoot, edit, captions. By the time it's done, the trend it was chasing
+> is already gone."
 
-- Show the landing: the recent-films rail, the trending ribbon, the composer.
-- Click a recent film → the lightbox opens, play 3–4 seconds of a real film with
-  sound. Let the voiced dialogue land. Close it.
+- Visual: the recent-films rail scrolling, or 2–3 quick cuts of vertical films
+  playing with sound. The pain line lands over real footage.
 
-### 0:15–0:35 — The input
-> "It starts with a logline. You can write your own, or pull a real trending
-> topic — drama916 turns today's internet into a story hook."
+### 0:20–0:40 — The promise + the input
+> "This is drama916. You type one sentence — and go put the kettle on. While it
+> boils, a screenwriter agent writes your script, a critic tears it apart, and a
+> director breaks it into shots."
 
-- Click a trending pill → it drops a logline into the composer.
-- Type/adjust to a fun one, e.g. *"Ronaldo loses the World Cup and Messi comforts
+- Show the composer. Click a trending pill → a logline drops in ("these are real
+  trends, refreshed hourly — drama916 turns today's internet into story hooks").
+- Adjust to a fun one, e.g. *"Ronaldo loses the World Cup and Messi comforts
   him with cheeseburgers."* Pick length + cast. Hit **Action**.
 
-### 0:35–1:15 — The pipeline (the substance)
+### 0:40–1:15 — The pipeline (the substance)
 > "Now it works like a real production — and here's the key idea: it locks the
 > story on paper *before* spending a cent on video."
 
@@ -59,6 +62,7 @@ already-finished film (e.g. "Gods of the Pitch") ready in Recent generations.
 - Point at the cost line under the film.
 > "And it shows you the receipt — this whole film cost about five dollars of Qwen
 > compute, because the thinking happened in text and the video rendered once.
+> Four hours of creator work — done before your kettle boiled.
 > One sentence in. A finished drama out. That's drama916."
 
 ---
