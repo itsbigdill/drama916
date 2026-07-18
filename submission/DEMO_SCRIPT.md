@@ -17,12 +17,12 @@ product. Short raw phrases, lowercase, one thought per card:
 
 - **A · feed (5s)**: a hand swipes a vertical-video feed (use the drama916 rail
   on a phone — our own films, TikTok-like). Muted feed audio.
-  Card: **everyone watches 9:16 drama**
+  Card: **everyone watches**
 - **B · tired creator (5s)**: Dan at a desk lit by a monitor, editing timeline
   on screen, rubs his eyes, cold coffee beside.
-  Card: **making one = 4 hours**
+  Card: **nobody has 4 hours**
 - **C · swipe (3s)**: back to the feed, one more swipe.
-  Card: **trends die in days**
+  Card: **trends don't wait**
 - **D · black (2s)**: black screen, one line:
   Card: **what if 1 line was enough?**
 
