@@ -11,16 +11,22 @@ already-finished film (e.g. "Gods of the Pitch") ready in Recent generations.
 
 ---
 
-### 0:00–0:20 — The problem (cold open, over the films rail)
-> "Vertical drama is eating the internet — short films built for a phone screen.
-> But here's the creator's math: one short takes about four hours to make —
-> script, shoot, edit, captions. By the time it's done, the trend it was chasing
-> is already gone."
+### 0:00–0:25 — The problem (cold open: phone b-roll + text cards, no VO)
+Shot on a phone, text cards carry the pain — voiceover only enters at the
+product. Short raw phrases, lowercase, one thought per card:
 
-- Visual: the recent-films rail scrolling, or 2–3 quick cuts of vertical films
-  playing with sound. The pain line lands over real footage.
+- **A · feed (5s)**: a hand swipes a vertical-video feed (use the drama916 rail
+  on a phone — our own films, TikTok-like). Muted feed audio.
+  Card: **everyone watches 9:16 drama**
+- **B · tired creator (5s)**: Dan at a desk lit by a monitor, editing timeline
+  on screen, rubs his eyes, cold coffee beside.
+  Card: **making one = 4 hours**
+- **C · swipe (3s)**: back to the feed, one more swipe.
+  Card: **trends die in days**
+- **D · black (2s)**: black screen, one line:
+  Card: **what if 1 line was enough?**
 
-### 0:20–0:40 — The promise + the input
+### 0:25–0:40 — The promise + the input
 > "This is drama916. You type one sentence — and go put the kettle on. While it
 > boils, a screenwriter agent writes your script, a critic tears it apart, and a
 > director breaks it into shots."
