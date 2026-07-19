@@ -90,11 +90,11 @@ gate — no rendered-then-discarded waste.
 - A "series" mode: recurring characters across multiple episodes.
 
 ## Built with
-qwen3.7-max · qwen3.7-plus · qwen-image-2.0-pro · happyhorse-1.1-i2v ·
-qwen3-tts-flash · Alibaba Cloud DashScope (Model Studio, intl) · Function Compute ·
-Python · ffmpeg
+Qwen Cloud · qwen3.7-max · qwen3.7-plus · qwen-image-2.0-pro ·
+happyhorse-1.1-i2v · qwen3-tts-flash · Alibaba Cloud DashScope (Model Studio,
+intl) · Function Compute · Python · ffmpeg
 
-## Links (fill in)
-- Live demo: `<FC public URL from DEPLOY.md>`
-- Video demo: `<YouTube/Vimeo link>`
-- Repo: `<git URL>`
+## Links
+- Live demo: https://drama916.coralglove.com
+- Video demo: `<YouTube link>`
+- Repo: https://github.com/itsbigdill/drama916
