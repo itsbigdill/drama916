@@ -144,12 +144,6 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
            display: flex; flex-direction: column; gap: 20px; align-items: center; }
   #formPane { max-width: 680px; width: 100%; flex: 1 1 auto; min-height: 0;
               display: flex; flex-direction: column; }
-  @media (max-width: 680px) {
-    #vstrip { margin: 0 -12px; padding: 6px 4px 36px; }
-    #mq { margin: 0 -12px; padding: 4px 4px 12px; }
-    #composer { margin: 0 -12px; width: calc(100% + 24px); }
-    #vstrip .vcell { max-height: 440px; }
-  }
   #runPane { align-self: stretch; }
 
   .bcell { cursor: grab; }
@@ -579,6 +573,25 @@ PAGE_TEMPLATE = r"""<!doctype html><meta charset="utf-8"><title>drama916</title>
           overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ddel { border: 0; background: transparent; cursor: pointer; color: #B4B1CF; font-size: 13px; flex: 0 0 auto; }
   .ddel:hover { color: #E5484D; }
+
+  /* ————— mobile: these MUST stay last — they override the desktop bleed tricks ————— */
+  @media (max-width: 680px) {
+    body { overflow-x: hidden; }
+    #recentHead { margin: 4px 0 10px; }
+    #vstrip { margin: 0 -12px; padding: 6px 12px 22px; }
+    #vstrip .vcell { max-height: 400px; min-height: 200px; }
+    #mq { margin: 0 -12px; padding: 4px 12px 12px; }
+    #composer { margin: 0 -12px; width: calc(100% + 24px); }
+    #stCanvas { padding: 16px 14px 30px; }
+    #stTop { padding: 10px 14px; gap: 10px; }
+    #stBar { padding: 8px 12px 10px; gap: 4px 8px; flex-wrap: wrap; }
+    #barInfo { flex: 1 1 100%; font-size: 11.5px; text-align: center; }
+    .barbtns { margin-left: 0; width: 100%; justify-content: center; }
+    #stBar .go { padding: 12px 20px; }
+    #panelText:not(:empty) { padding: 16px 16px; }
+    #crumbs { gap: 5px; }
+    .crumb { padding: 7px 12px; font-size: 11px; }
+  }
 </style>
 <body>
 <div class="wordmark">drama<span class="dot">916</span></div>
