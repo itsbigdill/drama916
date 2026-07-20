@@ -8,13 +8,13 @@ Paste-ready text for the Devpost form. Track: **AI Showrunner**.
 drama916
 
 ## Tagline (≤ 200 chars)
-One logline in, a finished vertical drama out. drama916 writes, storyboards,
-*critiques before it renders*, films, and voices a TikTok-ready short — and
-shows you the receipt for every cent of Qwen compute it spent.
+One logline in, a finished vertical drama out — written, storyboarded,
+critiqued *before* rendering, filmed and voiced by Qwen agents. With a real
+receipt for every cent of compute.
 
 ## Elevator pitch (the "what")
-Type one sentence — *"Ronaldo loses the World Cup and Messi comforts him with
-cheeseburgers"* — and ~10 minutes later you get a voiced, subtitled, 9:16 short
+Type one sentence — *"Avocado and pear go on vacation, and the pear sunbathes
+into a raisin"* — and ~10 minutes later you get a voiced, subtitled, 9:16 short
 film. drama916 is an autonomous showrunner: a chain of Qwen agents that write
 the screenplay, plan every shot, run a director-critic loop, paint the frames,
 turn stills into motion, and record the dialogue — with an approval gate where
@@ -29,6 +29,9 @@ speak the native language of the internet: vertical, voiced, captioned, ready to
 post.
 
 ## What it does
+- **Feeds on real trends** — a live ribbon of topics (Google Trends, refreshed
+  hourly) rewritten by the model into film-idea loglines; one tap drops one
+  into the composer.
 - **Writes** a short screenplay from one logline (`qwen3.7-max`).
 - **Plans** every shot — framing, action, the spoken line, the speaker
   (`qwen3.7-plus`).
@@ -49,7 +52,7 @@ post.
 ## How we built it
 A stateful Python service (stdlib HTTP server, no framework) drives a pipeline of
 Qwen Cloud models over the DashScope international API. The UI is one glass page:
-a ChatGPT-style composer, a live studio view that streams each stage
+a single composer field, a live studio view that streams each stage
 (script → board → critic → storyboard → film) with skeleton loaders, and a
 premiere that presents the result as a TikTok post with a copy-ready caption and
 hashtags. The whole thing ships as one container (Python + ffmpeg) on Alibaba
@@ -73,7 +76,9 @@ the number on the premiere screen is that ledger's total, not an estimate.
 - **Content moderation** on the image model would false-positive on staging like
   "hug" — we rewrite intimate wording into G-rated symbolic staging and, when a
   frame is still blocked, we show it honestly with a reason and a Regenerate
-  button rather than faking a fallback.
+  button rather than faking a fallback. The video model can even "succeed" with
+  an all-black clip — an ffmpeg luma guard catches that, retries once with a
+  sanitized prompt, then refuses honestly.
 - **Voice/scene sync** — a line longer than its 5s clip used to spill into the
   next scene; the cut now slows or holds a shot until its line finishes.
 - **Character consistency** across shots — solved with the series bible + cast
@@ -85,7 +90,7 @@ short for **~$3–7 of compute**, with an honest cost ledger and a human approva
 gate — no rendered-then-discarded waste.
 
 ## What's next
-- Persist user films to NAS and add shareable per-film pages.
+- Persist user films to durable storage and add shareable per-film pages.
 - Music/SFX bed and auto-captions burned in as an option.
 - A "series" mode: recurring characters across multiple episodes.
 
