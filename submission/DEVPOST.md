@@ -96,5 +96,5 @@ intl) · Function Compute · Python · ffmpeg
 
 ## Links
 - Live demo: https://drama916.coralglove.com
-- Video demo: `<YouTube link>`
+- Video demo: https://www.youtube.com/watch?v=Tg87PdmjKiU
 - Repo: https://github.com/itsbigdill/drama916
