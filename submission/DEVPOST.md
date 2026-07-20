@@ -29,8 +29,8 @@ speak the native language of the internet: vertical, voiced, captioned, ready to
 post.
 
 ## What it does
-- **Feeds on real trends** — a live ribbon of topics (Google Trends, refreshed
-  hourly) rewritten by the model into film-idea loglines; one tap drops one
+- **Feeds on real trends** — a live ribbon of trending topics, refreshed
+  hourly and rewritten by the model into film-idea loglines; one tap drops one
   into the composer.
 - **Writes** a short screenplay from one logline (`qwen3.7-max`).
 - **Plans** every shot — framing, action, the spoken line, the speaker
